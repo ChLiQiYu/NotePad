@@ -158,6 +158,12 @@ public final class NotePad {
         public static final String COLUMN_NAME_STATUS = "status";
 
         /**
+         * Column name for the category id
+         * <P>Type: INTEGER</P>
+         */
+        public static final String COLUMN_NAME_CATEGORY_ID = "category_id";
+
+        /**
          * Status value for pending todo items
          */
         public static final int STATUS_PENDING = 0;
@@ -166,5 +172,108 @@ public final class NotePad {
          * Status value for completed todo items
          */
         public static final int STATUS_COMPLETED = 1;
+    }
+
+    /**
+     * Categories table contract
+     */
+    public static final class Categories implements BaseColumns {
+
+        // This class cannot be instantiated
+        private Categories() {}
+
+        /**
+         * The table name offered by this provider
+         */
+        public static final String TABLE_NAME = "categories";
+
+        /*
+         * URI definitions
+         */
+
+        /**
+         * The scheme part for this provider's URI
+         */
+        private static final String SCHEME = "content://";
+
+        /**
+         * Path parts for the URIs
+         */
+
+        /**
+         * Path part for the Categories URI
+         */
+        private static final String PATH_CATEGORIES = "/categories";
+
+        /**
+         * Path part for the Category ID URI
+         */
+        private static final String PATH_CATEGORY_ID = "/categories/";
+
+        /**
+         * 0-relative position of a category ID segment in the path part of a category ID URI
+         */
+        public static final int CATEGORY_ID_PATH_POSITION = 1;
+
+        /**
+         * The content:// style URL for this table
+         */
+        public static final Uri CONTENT_URI =  Uri.parse(SCHEME + AUTHORITY + PATH_CATEGORIES);
+
+        /**
+         * The content URI base for a single category. Callers must
+         * append a numeric category id to this Uri to retrieve a category
+         */
+        public static final Uri CONTENT_ID_URI_BASE
+            = Uri.parse(SCHEME + AUTHORITY + PATH_CATEGORY_ID);
+
+        /**
+         * The content URI match pattern for a single category, specified by its ID. Use this to match
+         * incoming URIs or to construct an Intent.
+         */
+        public static final Uri CONTENT_ID_URI_PATTERN
+            = Uri.parse(SCHEME + AUTHORITY + PATH_CATEGORY_ID + "/#");
+
+        /*
+         * MIME type definitions
+         */
+
+        /**
+         * The MIME type of {@link #CONTENT_URI} providing a directory of categories.
+         */
+        public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.google.category";
+
+        /**
+         * The MIME type of a {@link #CONTENT_URI} sub-directory of a single
+         * category.
+         */
+        public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/vnd.google.category";
+
+        /**
+         * The default sort order for this table
+         */
+        public static final String DEFAULT_SORT_ORDER = "modified_time DESC";
+
+        /*
+         * Column definitions
+         */
+
+        /**
+         * Column name for the title of the category
+         * <P>Type: TEXT</P>
+         */
+        public static final String COLUMN_NAME_NAME = "name";
+
+        /**
+         * Column name for the creation timestamp
+         * <P>Type: INTEGER (long from System.currentTimeMillis())</P>
+         */
+        public static final String COLUMN_NAME_CREATED_TIME = "created_time";
+
+        /**
+         * Column name for the modification timestamp
+         * <P>Type: INTEGER (long from System.currentTimeMillis())</P>
+         */
+        public static final String COLUMN_NAME_MODIFIED_TIME = "modified_time";
     }
 }

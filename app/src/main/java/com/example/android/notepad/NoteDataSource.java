@@ -50,7 +50,8 @@ public class NoteDataSource {
                         NotePad.Notes.COLUMN_NAME_TITLE,
                         NotePad.Notes.COLUMN_NAME_NOTE,
                         NotePad.Notes.COLUMN_NAME_CREATE_DATE,
-                        NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE
+                        NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
+                        NotePad.Notes.COLUMN_NAME_CATEGORY_ID
                 },
                 null,
                 null,
@@ -66,6 +67,7 @@ public class NoteDataSource {
                     note.setContent(cursor.getString(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_NOTE)));
                     note.setCreateTime(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CREATE_DATE)));
                     note.setModifyTime(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE)));
+                    note.setCategoryId(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CATEGORY_ID)));
                     notes.add(note);
                 }
             } finally {
@@ -91,7 +93,8 @@ public class NoteDataSource {
                         NotePad.Notes.COLUMN_NAME_TITLE,
                         NotePad.Notes.COLUMN_NAME_NOTE,
                         NotePad.Notes.COLUMN_NAME_CREATE_DATE,
-                        NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE
+                        NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
+                        NotePad.Notes.COLUMN_NAME_CATEGORY_ID
                 },
                 null,
                 null,
@@ -108,6 +111,7 @@ public class NoteDataSource {
                     note.setContent(cursor.getString(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_NOTE)));
                     note.setCreateTime(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CREATE_DATE)));
                     note.setModifyTime(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE)));
+                    note.setCategoryId(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CATEGORY_ID)));
                 }
             } finally {
                 cursor.close();
@@ -128,6 +132,7 @@ public class NoteDataSource {
         values.put(NotePad.Notes.COLUMN_NAME_NOTE, note.getContent());
         values.put(NotePad.Notes.COLUMN_NAME_CREATE_DATE, note.getCreateTime());
         values.put(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE, note.getModifyTime());
+        values.put(NotePad.Notes.COLUMN_NAME_CATEGORY_ID, note.getCategoryId());
 
         return contentResolver.insert(NotePad.Notes.CONTENT_URI, values);
     }
@@ -156,5 +161,49 @@ public class NoteDataSource {
     public int deleteNote(long id) {
         Uri noteUri = ContentUris.withAppendedId(NotePad.Notes.CONTENT_ID_URI_BASE, id);
         return contentResolver.delete(noteUri, null, null);
+    }
+
+    /**
+     * 根据分类ID获取笔记数据
+     * @param categoryId 分类ID
+     * @return 笔记列表
+     */
+    public List<Note> getNotesByCategory(long categoryId) {
+        List<Note> notes = new ArrayList<>();
+        
+        // 查询指定分类的笔记数据
+        Cursor cursor = contentResolver.query(
+                NotePad.Notes.CONTENT_URI,
+                new String[]{
+                        NotePad.Notes._ID,
+                        NotePad.Notes.COLUMN_NAME_TITLE,
+                        NotePad.Notes.COLUMN_NAME_NOTE,
+                        NotePad.Notes.COLUMN_NAME_CREATE_DATE,
+                        NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
+                        NotePad.Notes.COLUMN_NAME_CATEGORY_ID
+                },
+                NotePad.Notes.COLUMN_NAME_CATEGORY_ID + "=?",
+                new String[]{String.valueOf(categoryId)},
+                NotePad.Notes.DEFAULT_SORT_ORDER
+        );
+
+        if (cursor != null) {
+            try {
+                while (cursor.moveToNext()) {
+                    Note note = new Note();
+                    note.setId(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes._ID)));
+                    note.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_TITLE)));
+                    note.setContent(cursor.getString(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_NOTE)));
+                    note.setCreateTime(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CREATE_DATE)));
+                    note.setModifyTime(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE)));
+                    note.setCategoryId(cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CATEGORY_ID)));
+                    notes.add(note);
+                }
+            } finally {
+                cursor.close();
+            }
+        }
+        
+        return notes;
     }
 }

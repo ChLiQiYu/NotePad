@@ -19,6 +19,7 @@ package com.example.android.notepad;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Environment;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 import java.io.BufferedReader;
 import java.io.File;
@@ -34,6 +35,7 @@ import java.io.OutputStreamWriter;
  * FileUtils类提供文件读写相关的工具方法
  */
 public class FileUtils {
+    private static final String TAG = "FileUtils";
 
     /**
      * 将字符串写入文件
@@ -42,39 +44,117 @@ public class FileUtils {
      * @throws IOException 如果写入过程中出现错误
      */
     public static void writeToFile(File file, String content) throws IOException {
+        Log.d(TAG, "开始写入文件: " + file.getAbsolutePath());
+        Log.d(TAG, "内容长度: " + content.length() + " 字符");
+        
         // 确保父目录存在
         File parentDir = file.getParentFile();
-        if (parentDir != null && !parentDir.exists()) {
-            parentDir.mkdirs();
+        if (parentDir != null) {
+            Log.d(TAG, "父目录: " + parentDir.getAbsolutePath());
+            Log.d(TAG, "父目录是否存在: " + parentDir.exists());
+            
+            if (!parentDir.exists()) {
+                Log.d(TAG, "父目录不存在，正在创建: " + parentDir.getAbsolutePath());
+                boolean mkdirsResult = parentDir.mkdirs();
+                Log.d(TAG, "创建结果: " + mkdirsResult);
+                
+                // 再次验证目录是否创建成功
+                if (!parentDir.exists()) {
+                    Log.e(TAG, "目录创建失败");
+                    throw new IOException("无法创建目录: " + parentDir.getAbsolutePath());
+                }
+            }
+            
+            // 检查目录是否可写
+            if (!parentDir.canWrite()) {
+                Log.e(TAG, "目录不可写");
+                throw new IOException("目录不可写: " + parentDir.getAbsolutePath());
+            }
+        }
+        
+        // 如果文件已存在，先删除旧文件
+        if (file.exists()) {
+            Log.d(TAG, "文件已存在，删除旧文件: " + file.delete());
         }
         
         FileOutputStream fos = null;
         OutputStreamWriter writer = null;
+        boolean writeSuccess = false;
+        
         try {
+            Log.d(TAG, "打开文件输出流...");
             fos = new FileOutputStream(file);
-            writer = new OutputStreamWriter(fos);
+            writer = new OutputStreamWriter(fos, "UTF-8");
+            
+            Log.d(TAG, "写入 " + content.length() + " 字符...");
             writer.write(content);
-            writer.flush(); // 确保数据写入磁盘
+            
+            Log.d(TAG, "刷新缓冲区...");
+            writer.flush();
+            
+            Log.d(TAG, "同步到磁盘...");
+            fos.getFD().sync();
+            
+            writeSuccess = true;
+            Log.d(TAG, "文件写入完成");
+            
+        } catch (IOException e) {
+            Log.e(TAG, "写入过程中发生错误", e);
+            throw e;
         } finally {
+            // 关闭资源
             if (writer != null) {
                 try {
                     writer.close();
+                    Log.d(TAG, "Writer关闭成功");
                 } catch (IOException e) {
-                    // 忽略关闭异常
+                    Log.w(TAG, "关闭写入流失败", e);
                 }
             }
             if (fos != null) {
                 try {
                     fos.close();
+                    Log.d(TAG, "FileOutputStream关闭成功");
                 } catch (IOException e) {
-                    // 忽略关闭异常
+                    Log.w(TAG, "关闭FileOutputStream失败", e);
                 }
             }
         }
         
-        // 验证文件是否真正写入成功
-        if (!file.exists() || file.length() == 0) {
-            throw new IOException("文件写入失败，文件不存在或为空");
+        // 在资源关闭后验证文件
+        Log.d(TAG, "等待文件系统同步...");
+        try {
+            Thread.sleep(150);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.w(TAG, "延迟被中断", e);
+        }
+        
+        Log.d(TAG, "验证文件是否存在...");
+        if (!file.exists()) {
+            Log.e(TAG, "文件写入失败，文件不存在");
+            throw new IOException("文件写入失败，文件不存在: " + file.getAbsolutePath());
+        }
+        
+        long fileSize = file.length();
+        Log.d(TAG, "文件成功写入，大小: " + fileSize + " 字节");
+        
+        if (fileSize == 0) {
+            Log.e(TAG, "文件大小为0");
+            // 删除空文件
+            file.delete();
+            throw new IOException("文件写入失败，文件为空: " + file.getAbsolutePath());
+        }
+        
+        // 验证文件大小是否合理
+        long expectedSize = content.getBytes("UTF-8").length;
+        Log.d(TAG, "期望大小: " + expectedSize + " 字节, 实际大小: " + fileSize + " 字节");
+        
+        // 容忍一定的编码差异，但不应该相差太大
+        if (fileSize < expectedSize * 0.5) {
+            Log.e(TAG, "文件大小异常，可能写入不完整");
+            file.delete();
+            throw new IOException("文件写入不完整: 期望" + expectedSize + "字节, 实际" + fileSize + "字节");
         }
     }
 

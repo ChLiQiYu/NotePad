@@ -25,6 +25,7 @@ public class Note {
     private String content;
     private long createTime;
     private long modifyTime;
+    private long categoryId;
 
     public Note() {
     }
@@ -35,6 +36,16 @@ public class Note {
         this.content = content;
         this.createTime = createTime;
         this.modifyTime = modifyTime;
+        this.categoryId = 0; // Default category ID
+    }
+
+    public Note(long id, String title, String content, long createTime, long modifyTime, long categoryId) {
+        this.id = id;
+        this.title = title;
+        this.content = content;
+        this.createTime = createTime;
+        this.modifyTime = modifyTime;
+        this.categoryId = categoryId;
     }
 
     // Getters and Setters
@@ -78,6 +89,14 @@ public class Note {
         this.modifyTime = modifyTime;
     }
 
+    public long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(long categoryId) {
+        this.categoryId = categoryId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -88,6 +107,7 @@ public class Note {
         if (id != note.id) return false;
         if (createTime != note.createTime) return false;
         if (modifyTime != note.modifyTime) return false;
+        if (categoryId != note.categoryId) return false;
         if (title != null ? !title.equals(note.title) : note.title != null) return false;
         return content != null ? content.equals(note.content) : note.content == null;
     }
@@ -99,6 +119,7 @@ public class Note {
         result = 31 * result + (content != null ? content.hashCode() : 0);
         result = 31 * result + (int) (createTime ^ (createTime >>> 32));
         result = 31 * result + (int) (modifyTime ^ (modifyTime >>> 32));
+        result = 31 * result + (int) (categoryId ^ (categoryId >>> 32));
         return result;
     }
 
@@ -110,6 +131,7 @@ public class Note {
                 ", content='" + content + '\'' +
                 ", createTime=" + createTime +
                 ", modifyTime=" + modifyTime +
+                ", categoryId=" + categoryId +
                 '}';
     }
 }

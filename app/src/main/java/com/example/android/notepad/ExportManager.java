@@ -18,6 +18,7 @@ package com.example.android.notepad;
 
 import android.content.ContentResolver;
 import android.os.AsyncTask;
+import android.util.Log;
 import org.json.JSONException;
 import java.io.File;
 import java.io.IOException;
@@ -29,6 +30,7 @@ import java.util.List;
  * 包括查询数据、序列化为JSON格式并保存到文件
  */
 public class ExportManager {
+    private static final String TAG = "ExportManager";
     private NoteDataSource dataSource;
     private ContentResolver contentResolver;
 
@@ -72,19 +74,57 @@ public class ExportManager {
         @Override
         protected Exception doInBackground(Void... voids) {
             try {
+                Log.d(TAG, "开始导出笔记...");
+                
                 // 检查是否已经取消
                 if (isCancelled()) {
-                    return new Exception("Export cancelled");
+                    Log.w(TAG, "导出已取消");
+                    return new Exception("导出已取消");
                 }
 
                 ExportManager manager = managerRef.get();
                 if (manager == null) {
-                    return new Exception("ExportManager is null");
+                    Log.e(TAG, "ExportManager为null");
+                    return new Exception("ExportManager为null");
+                }
+
+                // 检查输出文件是否可写
+                File parentDir = outputFile.getParentFile();
+                Log.d(TAG, "输出文件路径: " + outputFile.getAbsolutePath());
+                Log.d(TAG, "父目录: " + (parentDir != null ? parentDir.getAbsolutePath() : "null"));
+                Log.d(TAG, "父目录是否存在: " + (parentDir != null && parentDir.exists()));
+                Log.d(TAG, "父目录是否可写: " + (parentDir != null && parentDir.canWrite()));
+                
+                // 确保父目录存在（提前创建）
+                if (parentDir != null && !parentDir.exists()) {
+                    Log.d(TAG, "父目录不存在，正在创建...");
+                    boolean created = parentDir.mkdirs();
+                    Log.d(TAG, "父目录创建结果: " + created);
+                    if (!created) {
+                        Log.e(TAG, "无法创建父目录");
+                        return new IOException("无法创建父目录: " + parentDir.getAbsolutePath());
+                    }
+                    // 再次验证目录是否真的创建成功
+                    if (!parentDir.exists()) {
+                        Log.e(TAG, "父目录创建后仍不存在");
+                        return new IOException("父目录创建失败: " + parentDir.getAbsolutePath());
+                    }
+                }
+                
+                // 检查目录写入权限
+                if (parentDir != null && !parentDir.canWrite()) {
+                    Log.e(TAG, "文件输出目录没有写入权限");
+                    return new IOException("文件输出目录没有写入权限: " + parentDir.getAbsolutePath());
                 }
 
                 // 获取所有笔记数据
                 List<Note> notes = manager.dataSource.getAllNotes();
+                if (notes == null || notes.isEmpty()) {
+                    Log.w(TAG, "没有笔记数据");
+                    return new Exception("没有笔记数据需要导出");
+                }
                 noteCount = notes.size();
+                Log.d(TAG, "获取了 " + noteCount + " 条笔记");
 
                 // 更新进度
                 publishProgress(50);
@@ -92,29 +132,92 @@ public class ExportManager {
                 // 序列化为JSON格式
                 long exportTime = System.currentTimeMillis();
                 String jsonContent = JsonSerializer.serializeNotes(notes, exportTime);
-
-                // 确保父目录存在
-                File parentDir = outputFile.getParentFile();
-                if (parentDir != null && !parentDir.exists()) {
-                    parentDir.mkdirs();
+                Log.d(TAG, "JSON序列化完成, 内容长度: " + jsonContent.length() + " 字节");
+                
+                // 验证JSON内容是否有效
+                if (jsonContent == null || jsonContent.trim().isEmpty()) {
+                    Log.e(TAG, "JSON序列化失败");
+                    return new Exception("JSON序列化失败");
                 }
 
                 // 保存到文件
-                FileUtils.writeToFile(outputFile, jsonContent);
+                Log.d(TAG, "正在写入文件...");
+                Log.d(TAG, "目标文件: " + outputFile.getAbsolutePath());
+                Log.d(TAG, "JSON内容大小: " + jsonContent.length() + " 字符");
+                
+                try {
+                    FileUtils.writeToFile(outputFile, jsonContent);
+                    Log.d(TAG, "FileUtils.writeToFile执行完成");
+                } catch (IOException e) {
+                    Log.e(TAG, "文件写入失败", e);
+                    // 清理可能残留的空文件
+                    if (outputFile.exists() && outputFile.length() == 0) {
+                        Log.d(TAG, "删除空文件: " + outputFile.delete());
+                    }
+                    return e;
+                } catch (Exception e) {
+                    Log.e(TAG, "文件写入发生未预期异常", e);
+                    // 清理可能残留的文件
+                    if (outputFile.exists()) {
+                        Log.d(TAG, "删除残留文件: " + outputFile.delete());
+                    }
+                    return new IOException("文件写入失败: " + e.getMessage(), e);
+                }
 
-                // 验证文件是否真正创建成功
-                if (!outputFile.exists() || outputFile.length() == 0) {
-                    return new IOException("文件创建失败或为空");
+                // 二次验证 - 确保文件真正被创建并写入成功
+                // 等待文件系统完全同步（增加延迟时间）
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Log.w(TAG, "延迟被中断", e);
+                }
+                
+                if (!outputFile.exists()) {
+                    Log.e(TAG, "验证失败：文件不存在");
+                    Log.e(TAG, "期望路径: " + outputFile.getAbsolutePath());
+                    Log.e(TAG, "父目录是否存在: " + (parentDir != null && parentDir.exists()));
+                    if (parentDir != null && parentDir.exists()) {
+                        Log.e(TAG, "父目录内容: " + java.util.Arrays.toString(parentDir.list()));
+                    }
+                    return new IOException("文件写入后不存在: " + outputFile.getAbsolutePath());
+                }
+
+                long fileSize = outputFile.length();
+                Log.d(TAG, "文件验证通过, 大小: " + fileSize + " 字节");
+                
+                if (fileSize == 0) {
+                    Log.e(TAG, "验证失败：文件大小为0");
+                    // 删除空文件
+                    outputFile.delete();
+                    return new IOException("文件大小为0字节，数据未正常写入");
+                }
+                
+                // 验证文件大小是否合理（至少应该有JSON基本结构）
+                if (fileSize < 10) {
+                    Log.e(TAG, "验证失败：文件过小，疑似写入失败");
+                    outputFile.delete();
+                    return new IOException("文件异常过小: " + fileSize + "字节");
+                }
+                
+                // 放宽验证条件，只要有部分内容写入就认为成功
+                if (fileSize < jsonContent.length() / 10) {
+                    Log.e(TAG, "验证失败：文件写入严重不完整");
+                    outputFile.delete();
+                    return new IOException("文件写入严重不完整: 期望" + jsonContent.length() + "字节，实际" + fileSize + "字节");
                 }
 
                 // 更新进度
                 publishProgress(100);
+                Log.d(TAG, "导出完成！");
 
                 return null;
             } catch (JSONException e) {
+                Log.e(TAG, "JSON异常", e);
                 return e;
-            } catch (IOException e) {
-                return e;
+            } catch (Exception e) {
+                Log.e(TAG, "未预期错误", e);
+                return new Exception("未预期错误: " + e.getMessage(), e);
             }
         }
 

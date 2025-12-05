@@ -38,8 +38,16 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This Activity handles "editing" a note, where editing is responding to
@@ -64,7 +72,8 @@ public class NoteEditor extends Activity {
             NotePad.Notes._ID,
             NotePad.Notes.COLUMN_NAME_TITLE,
             NotePad.Notes.COLUMN_NAME_NOTE,
-            NotePad.Notes.COLUMN_NAME_STATUS
+            NotePad.Notes.COLUMN_NAME_STATUS,
+            NotePad.Notes.COLUMN_NAME_CATEGORY_ID
     };
 
     // A label for the saved state of the activity
@@ -81,6 +90,9 @@ public class NoteEditor extends Activity {
     private Cursor mCursor;
     private EditText mText;
     private CheckBox mTodoCheckBox;
+    private Spinner mCategorySpinner;
+    private CategoryDataSource mCategoryDataSource;
+    private long mSelectedCategoryId;
     private String mOriginalContent;
 
     /**
@@ -183,6 +195,9 @@ public class NoteEditor extends Activity {
                 // Writes the log identifier, a message, and the URI that failed.
                 Log.e(TAG, "Failed to insert new note into " + getIntent().getData());
 
+                // Show error message to user
+                Toast.makeText(this, "创建新笔记失败，请重试", Toast.LENGTH_LONG).show();
+
                 // Closes the activity.
                 finish();
                 return;
@@ -210,13 +225,31 @@ public class NoteEditor extends Activity {
          * the block will be momentary, but in a real app you should use
          * android.content.AsyncQueryHandler or android.os.AsyncTask.
          */
-        mCursor = managedQuery(
-            mUri,         // The URI that gets multiple notes from the provider.
-            PROJECTION,   // A projection that returns the note ID and note content for each note.
-            null,         // No "where" clause selection criteria.
-            null,         // No "where" clause selection values.
-            null          // Use the default sort order (modification date, descending)
-        );
+        // Replace deprecated managedQuery with modern approach
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(
+                mUri,         // The URI that gets multiple notes from the provider.
+                PROJECTION,   // A projection that returns the note ID and note content for each note.
+                null,         // No "where" clause selection criteria.
+                null,         // No "where" clause selection values.
+                null          // Use the default sort order (modification date, descending)
+            );
+            
+            if (cursor != null) {
+                cursor.moveToFirst();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to query note data", e);
+            Toast.makeText(this, "加载笔记数据失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            if (cursor != null) {
+                cursor.close();
+            }
+            finish();
+            return;
+        }
+        
+        mCursor = cursor;
 
         // For a paste, initializes the data from clipboard.
         // (Must be done after mCursor is initialized.)
@@ -235,6 +268,12 @@ public class NoteEditor extends Activity {
         
         // Gets a handle to the CheckBox in the layout.
         mTodoCheckBox = (CheckBox) findViewById(R.id.todo_checkbox);
+        
+        // Gets a handle to the Spinner in the layout.
+        mCategorySpinner = (Spinner) findViewById(R.id.category_spinner);
+        
+        // Initialize category data source
+        mCategoryDataSource = new CategoryDataSource(this);
 
         /*
          * If this Activity had stopped previously, its state was written the ORIGINAL_CONTENT
@@ -262,15 +301,27 @@ public class NoteEditor extends Activity {
          * process. This tests that it's not null, since it should always contain data.
          */
         if (mCursor != null) {
-            // Requery in case something changed while paused (such as the title)
-            mCursor.requery();
-
-            /* Moves to the first record. Always call moveToFirst() before accessing data in
-             * a Cursor for the first time. The semantics of using a Cursor are that when it is
-             * created, its internal index is pointing to a "place" immediately before the first
-             * record.
-             */
-            mCursor.moveToFirst();
+            // Replace deprecated requery() with modern approach
+            try {
+                mCursor.close();
+                mCursor = getContentResolver().query(
+                    mUri,         // The URI that gets multiple notes from the provider.
+                    PROJECTION,   // A projection that returns the note ID and note content for each note.
+                    null,         // No "where" clause selection criteria.
+                    null,         // No "where" clause selection values.
+                    null          // Use the default sort order (modification date, descending)
+                );
+                
+                if (mCursor != null) {
+                    mCursor.moveToFirst();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to requery note data", e);
+                Toast.makeText(this, "重新加载笔记数据失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                setTitle(getText(R.string.error_title));
+                mText.setText(getText(R.string.error_message));
+                return;
+            }
 
             // Modifies the window title for the Activity according to the current Activity state.
             if (mState == STATE_EDIT) {
@@ -288,25 +339,39 @@ public class NoteEditor extends Activity {
             /*
              * onResume() may have been called after the Activity lost focus (was paused).
              * The user was either editing or creating a note when the Activity paused.
-             * The Activity should re-display the text that had been retrieved previously, but
-             * it should not move the cursor. This helps the user to continue editing or entering.
+             * The Activity should re-display the text that had been retrieved previously, but shouldn't change
+             * the text cursor's position.
              */
+            if (mCursor != null && !mCursor.isClosed()) {
+                // Gets the note text from the Cursor and puts it in the TextView, but doesn't change
+                // the text cursor's position.
+                int colNoteIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
+                String note = mCursor.getString(colNoteIndex);
+                mText.setTextKeepState(note);
 
-            // Gets the note text from the Cursor and puts it in the TextView, but doesn't change
-            // the text cursor's position.
-            int colNoteIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
-            String note = mCursor.getString(colNoteIndex);
-            mText.setTextKeepState(note);
-
-            // Stores the original note text, to allow the user to revert changes.
-            if (mOriginalContent == null) {
-                mOriginalContent = note;
+                // Stores the original note text, to allow the user to revert changes.
+                if (mOriginalContent == null) {
+                    mOriginalContent = note;
+                }
+                
+                // Set the todo checkbox state based on the note's status
+                int colStatusIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_STATUS);
+                if (colStatusIndex >= 0) {
+                    int status = mCursor.getInt(colStatusIndex);
+                    mTodoCheckBox.setChecked(status == NotePad.Notes.STATUS_COMPLETED);
+                } else {
+                    // Default to unchecked if status column is not found
+                    mTodoCheckBox.setChecked(false);
+                }
+                
+                // Set the category spinner based on the note's category
+                int colCategoryIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_CATEGORY_ID);
+                long categoryId = 0;
+                if (colCategoryIndex >= 0) {
+                    categoryId = mCursor.getLong(colCategoryIndex);
+                }
+                setupCategorySpinner(categoryId);
             }
-            
-            // Set the todo checkbox state based on the note's status
-            int colStatusIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_STATUS);
-            int status = mCursor.getInt(colStatusIndex);
-            mTodoCheckBox.setChecked(status == NotePad.Notes.STATUS_COMPLETED);
         /*
          * Something is wrong. The Cursor should always contain data. Report an error in the
          * note.
@@ -384,6 +449,57 @@ public class NoteEditor extends Activity {
                 mState = STATE_EDIT;
           }
         }
+    }
+
+    /**
+     * Setup category spinner with all available categories
+     * @param selectedCategoryId the currently selected category ID
+     */
+    private void setupCategorySpinner(long selectedCategoryId) {
+        // Get all categories
+        List<Category> categories = mCategoryDataSource.getAllCategories();
+        
+        // Create lists for spinner
+        List<String> categoryNames = new ArrayList<>();
+        List<Long> categoryIds = new ArrayList<>();
+        
+        // Add default option
+        categoryNames.add("无分类");
+        categoryIds.add(0L);
+        
+        // Add all categories
+        for (Category category : categories) {
+            categoryNames.add(category.getName());
+            categoryIds.add(category.getId());
+        }
+        
+        // Create adapter
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, categoryNames);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mCategorySpinner.setAdapter(adapter);
+        
+        // Set selected item
+        for (int i = 0; i < categoryIds.size(); i++) {
+            if (categoryIds.get(i) == selectedCategoryId) {
+                mCategorySpinner.setSelection(i);
+                mSelectedCategoryId = selectedCategoryId;
+                break;
+            }
+        }
+        
+        // Set listener
+        mCategorySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                mSelectedCategoryId = categoryIds.get(position);
+            }
+            
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                mSelectedCategoryId = 0;
+            }
+        });
     }
 
     /**
@@ -497,26 +613,34 @@ public class NoteEditor extends Activity {
             if (uri != null && NotePad.Notes.CONTENT_ITEM_TYPE.equals(cr.getType(uri))) {
 
                 // The clipboard holds a reference to data with a note MIME type. This copies it.
-                Cursor orig = cr.query(
-                        uri,            // URI for the content provider
-                        PROJECTION,     // Get the columns referred to in the projection
-                        null,           // No selection variables
-                        null,           // No selection variables, so no criteria are needed
-                        null            // Use the default sort order
-                );
+                Cursor orig = null;
+                try {
+                    orig = cr.query(
+                            uri,            // URI for the content provider
+                            PROJECTION,     // Get the columns referred to in the projection
+                            null,           // No selection variables
+                            null,           // No selection variables, so no criteria are needed
+                            null            // Use the default sort order
+                    );
 
-                // If the Cursor is not null, and it contains at least one record
-                // (moveToFirst() returns true), then this gets the note data from it.
-                if (orig != null) {
-                    if (orig.moveToFirst()) {
-                        int colNoteIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
-                        int colTitleIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE);
-                        text = orig.getString(colNoteIndex);
-                        title = orig.getString(colTitleIndex);
+                    // If the Cursor is not null, and it contains at least one record
+                    // (moveToFirst() returns true), then this gets the note data from it.
+                    if (orig != null) {
+                        if (orig.moveToFirst()) {
+                            int colNoteIndex = orig.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
+                            int colTitleIndex = orig.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE);
+                            text = orig.getString(colNoteIndex);
+                            title = orig.getString(colTitleIndex);
+                        }
                     }
-
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to query clipboard note data", e);
+                    Toast.makeText(this, "粘贴笔记数据失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                } finally {
                     // Closes the cursor.
-                    orig.close();
+                    if (orig != null) {
+                        orig.close();
+                    }
                 }
             }
 
@@ -578,6 +702,9 @@ public class NoteEditor extends Activity {
         // Set the status based on the checkbox state
         int status = mTodoCheckBox.isChecked() ? NotePad.Notes.STATUS_COMPLETED : NotePad.Notes.STATUS_PENDING;
         values.put(NotePad.Notes.COLUMN_NAME_STATUS, status);
+        
+        // Set the category ID
+        values.put(NotePad.Notes.COLUMN_NAME_CATEGORY_ID, mSelectedCategoryId);
 
         /*
          * Updates the provider with the new values in the map. The ListView is updated

@@ -250,11 +250,8 @@ public class ExportActivity extends Activity {
         if (!downloadDir.exists()) {
             boolean created = downloadDir.mkdirs();
             if (!created) {
-                // 如果创建目录失败，尝试使用应用私有目录
-                downloadDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-                if (downloadDir != null && !downloadDir.exists()) {
-                    downloadDir.mkdirs();
-                }
+                // 目录创建失败，提示错误不自动降级
+                throw new RuntimeException("无法创建下载目录，请确保存储权限存在: " + downloadDir.getAbsolutePath());
             }
         }
 
@@ -317,14 +314,46 @@ public class ExportActivity extends Activity {
      * 显示错误对话框
      */
     private void showErrorDialog(String errorMessage) {
+        // 根据错误信息生成详细的提示
+        String detailedMessage = "导出过程中发生错误:\n" + 
+                (errorMessage != null && !errorMessage.isEmpty() ? errorMessage : "未知错误");
+        
+        // 添加常见问题排查建议
+        StringBuilder suggestions = new StringBuilder();
+        suggestions.append("\n\n请检查:\n");
+        
+        if (errorMessage != null) {
+            if (errorMessage.contains("权限") || errorMessage.contains("permission")) {
+                suggestions.append("1. 存储权限是否已授予\n");
+                suggestions.append("2. 在设置中手动开启存储权限\n");
+            } else if (errorMessage.contains("目录") || errorMessage.contains("创建")) {
+                suggestions.append("1. 外部存储是否可用\n");
+                suggestions.append("2. SD卡是否挂载\n");
+                suggestions.append("3. 存储空间是否充足\n");
+            } else if (errorMessage.contains("数据") || errorMessage.contains("笔记")) {
+                suggestions.append("1. 是否有笔记数据需要导出\n");
+            } else {
+                suggestions.append("1. 存储权限是否已授予\n");
+                suggestions.append("2. 外部存储是否可用\n");
+                suggestions.append("3. 存储空间是否充足\n");
+            }
+        } else {
+            suggestions.append("1. 存储权限是否已授予\n");
+            suggestions.append("2. 外部存储是否可用\n");
+            suggestions.append("3. 存储空间是否充足\n");
+        }
+        
+        detailedMessage += suggestions.toString();
+        
         new AlertDialog.Builder(this)
                 .setTitle("导出失败")
-                .setMessage("导出过程中发生错误:\n" + (errorMessage != null ? errorMessage : "未知错误"))
+                .setMessage(detailedMessage)
                 .setPositiveButton("确定", null)
                 .setNeutralButton("重试", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        if (pendingFileName != null) {
+                        String fileName = fileNameEditText.getText().toString().trim();
+                        if (!fileName.isEmpty()) {
                             exportNotes();
                         }
                     }

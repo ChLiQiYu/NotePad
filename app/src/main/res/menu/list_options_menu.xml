@@ -22,6 +22,8 @@
           android:alphabeticShortcut='p' />
     
     <!-- Export and Import menu items -->
+    <!-- Temporarily hidden as per requirement -->
+    <!--
     <item android:id="@+id/menu_export"
           android:title="@string/menu_export"
           android:alphabeticShortcut='e' />
@@ -29,6 +31,12 @@
     <item android:id="@+id/menu_import"
           android:title="@string/menu_import"
           android:alphabeticShortcut='i' />
+    -->
+    
+    <!-- Category management menu item -->
+    <item android:id="@+id/menu_manage_categories"
+          android:title="管理分类"
+          android:alphabeticShortcut='c' />
     
     <!-- Filter menu items -->
     <item android:id="@+id/menu_show_all"
@@ -39,4 +47,12 @@
     
     <item android:id="@+id/menu_show_normal"
           android:title="仅显示普通笔记" />
+    
+    <item android:id="@+id/menu_filter_by_category"
+          android:title="按分类筛选">
+        <menu>
+            <group android:id="@+id/group_categories"
+                   android:checkableBehavior="single" />
+        </menu>
+    </item>
 </menu>

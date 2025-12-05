@@ -24,6 +24,11 @@
         android:text="标记为代办事项"
         android:padding="8dp" />
     
+    <Spinner android:id="@+id/category_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="8dp" />
+    
     <view class="com.example.android.notepad.NoteEditor$LinedEditText"
         android:id="@+id/note"
         android:layout_width="match_parent"

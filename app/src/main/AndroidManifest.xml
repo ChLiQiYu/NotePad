@@ -120,6 +120,10 @@
         <!-- 添加导出和导入Activity -->
         <activity android:name="ExportActivity" android:label="@string/menu_export" />
         <activity android:name="ImportActivity" android:label="@string/menu_import" />
+        
+        <!-- 添加分类管理Activity -->
+        <activity android:name="CategoriesListActivity" android:label="分类管理" />
+        <activity android:name="CategoryEditorActivity" android:label="编辑分类" />
 
     </application>
 

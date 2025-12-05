@@ -37,6 +37,7 @@ import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.SubMenu;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
@@ -44,13 +45,16 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ResourceCursorAdapter;
 import android.widget.SearchView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.android.notepad.NotePad.Notes;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -83,9 +87,12 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     private static final int COLUMN_INDEX_STATUS = 3;
 
     private SearchView mSearchView;
+    private Spinner mCategoryFilterSpinner;
     private String mCurrentFilter = "";
     private Uri mCurrentUri = Notes.CONTENT_URI;
+    private long mCurrentCategoryId = 0;
     private NotesCursorAdapter mAdapter;
+    private Menu mOptionsMenu;
     private static final int LOADER_ID = 0;
 
     /**
@@ -175,6 +182,54 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
 
         // Initialize loader to load notes data
         getLoaderManager().initLoader(LOADER_ID, null, this);
+        
+        // Setup category filter spinner
+        setupCategoryFilterSpinner();
+    }
+
+    /**
+     * Setup category filter spinner with all available categories
+     */
+    private void setupCategoryFilterSpinner() {
+        // This will be implemented when we modify the layout to include the spinner
+    }
+
+    /**
+     * Setup category filter menu with all available categories
+     */
+    private void setupCategoryFilterMenu(Menu menu) {
+        // Get category data source
+        CategoryDataSource categoryDataSource = new CategoryDataSource(this);
+        
+        // Get all categories
+        List<Category> categories = categoryDataSource.getAllCategories();
+        
+        // Find the category filter menu item
+        MenuItem categoryFilterItem = menu.findItem(R.id.menu_filter_by_category);
+        if (categoryFilterItem != null) {
+            // Get the submenu
+            SubMenu subMenu = categoryFilterItem.getSubMenu();
+            if (subMenu != null) {
+                // Clear existing items
+                subMenu.clear();
+                
+                // Add "All" option
+                MenuItem allItem = subMenu.add(Menu.NONE, R.id.menu_show_all, Menu.NONE, "所有笔记");
+                allItem.setCheckable(true);
+                if (mCurrentCategoryId == 0) {
+                    allItem.setChecked(true);
+                }
+                
+                // Add categories
+                for (Category category : categories) {
+                    MenuItem item = subMenu.add(Menu.NONE, Menu.FIRST + (int) category.getId(), Menu.NONE, category.getName());
+                    item.setCheckable(true);
+                    if (mCurrentCategoryId == category.getId()) {
+                        item.setChecked(true);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -200,6 +255,12 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         MenuItem searchItem = menu.findItem(R.id.menu_search);
         mSearchView = (SearchView) searchItem.getActionView();
         setupSearchView();
+
+        // Add category filter options
+        setupCategoryFilterMenu(menu);
+        
+        // Store reference to menu for later updates
+        mOptionsMenu = menu;
 
         // Generate any additional actions that can be performed on the
         // overall list.  In a normal install, there are no additional
@@ -248,6 +309,11 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         args.putString("filter", mCurrentFilter);
         args.putParcelable("uri", mCurrentUri);
         getLoaderManager().restartLoader(LOADER_ID, args, this);
+        
+        // Update category filter menu
+        if (mOptionsMenu != null) {
+            setupCategoryFilterMenu(mOptionsMenu);
+        }
     }
 
     @Override
@@ -357,25 +423,30 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             pasteIntent.setClass(this, NoteEditor.class);
             startActivity(pasteIntent);
             return true;
-        } else if (itemId == R.id.menu_export) {
-            startActivity(new Intent(this, ExportActivity.class));
-            return true;
-        } else if (itemId == R.id.menu_import) {
-            startActivity(new Intent(this, ImportActivity.class));
+        } else if (itemId == R.id.menu_manage_categories) {
+            startActivity(new Intent(this, CategoriesListActivity.class));
             return true;
         } else if (itemId == R.id.menu_show_all) {
             mCurrentUri = Notes.CONTENT_URI;
+            mCurrentCategoryId = 0;
             restartLoader();
             return true;
         } else if (itemId == R.id.menu_show_todo) {
             // Use proper URI for todo notes
             mCurrentUri = Uri.withAppendedPath(Notes.CONTENT_URI, "todo");
+            mCurrentCategoryId = 0;
             restartLoader();
             return true;
         } else if (itemId == R.id.menu_show_normal) {
             // Use proper URI for normal notes
             mCurrentUri = Uri.withAppendedPath(Notes.CONTENT_URI, "normal");
+            mCurrentCategoryId = 0;
             restartLoader();
+            return true;
+        } else if (itemId >= Menu.FIRST && itemId <= Menu.FIRST + 1000) {
+            // Handle category filter
+            long categoryId = itemId - Menu.FIRST;
+            filterByCategory(categoryId);
             return true;
         } else {
             return super.onOptionsItemSelected(item);
@@ -534,6 +605,40 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     }
 
     /**
+     * Filter notes by category
+     * @param categoryId the category ID to filter by
+     */
+    private void filterByCategory(long categoryId) {
+        mCurrentCategoryId = categoryId;
+        restartLoader();
+        
+        // Update menu item checked state
+        if (mOptionsMenu != null) {
+            MenuItem categoryFilterItem = mOptionsMenu.findItem(R.id.menu_filter_by_category);
+            if (categoryFilterItem != null) {
+                SubMenu subMenu = categoryFilterItem.getSubMenu();
+                if (subMenu != null) {
+                    // Uncheck all items
+                    for (int i = 0; i < subMenu.size(); i++) {
+                        MenuItem item = subMenu.getItem(i);
+                        item.setChecked(false);
+                    }
+                    
+                    // Check the selected item
+                    for (int i = 0; i < subMenu.size(); i++) {
+                        MenuItem item = subMenu.getItem(i);
+                        if ((categoryId == 0 && item.getItemId() == R.id.menu_show_all) ||
+                            (categoryId > 0 && item.getItemId() == Menu.FIRST + categoryId)) {
+                            item.setChecked(true);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * This method is called when the user clicks a note in the displayed list.
      *
      * This method handles incoming actions of either PICK (get data from the provider) or
@@ -582,11 +687,31 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             }
         }
 
+        // Build selection criteria
+        StringBuilder selectionBuilder = new StringBuilder();
+        List<String> selectionArgsList = new ArrayList<>();
+
         // Apply search filter if exists
         if (!filter.isEmpty()) {
-            selection = Notes.COLUMN_NAME_TITLE + " LIKE ? OR " +
-                    Notes.COLUMN_NAME_NOTE + " LIKE ?";
-            selectionArgs = new String[]{"%" + filter + "%", "%" + filter + "%"};
+            selectionBuilder.append("(").append(Notes.COLUMN_NAME_TITLE).append(" LIKE ? OR ")
+                    .append(Notes.COLUMN_NAME_NOTE).append(" LIKE ?)");
+            selectionArgsList.add("%" + filter + "%");
+            selectionArgsList.add("%" + filter + "%");
+        }
+
+        // Apply category filter if exists
+        if (mCurrentCategoryId > 0) {
+            if (selectionBuilder.length() > 0) {
+                selectionBuilder.append(" AND ");
+            }
+            selectionBuilder.append(Notes.COLUMN_NAME_CATEGORY_ID).append(" = ?");
+            selectionArgsList.add(String.valueOf(mCurrentCategoryId));
+        }
+
+        // Convert to arrays
+        if (selectionBuilder.length() > 0) {
+            selection = selectionBuilder.toString();
+            selectionArgs = selectionArgsList.toArray(new String[0]);
         }
 
         // Return the new loader
