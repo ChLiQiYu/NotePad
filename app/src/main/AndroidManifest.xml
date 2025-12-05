@@ -22,6 +22,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.android.notepad" >
 
+    <!-- 添加文件读写权限 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
     <application android:icon="@drawable/app_notes"
         android:label="@string/app_name"
     >
@@ -112,6 +116,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- 添加导出和导入Activity -->
+        <activity android:name="ExportActivity" android:label="@string/menu_export" />
+        <activity android:name="ImportActivity" android:label="@string/menu_import" />
 
     </application>
 

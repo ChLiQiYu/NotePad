@@ -30,6 +30,8 @@
     <string name="menu_revert">Revert changes</string>
     <string name="menu_copy">Copy</string>
     <string name="menu_paste">Paste</string>
+    <string name="menu_export">Export Notes</string>
+    <string name="menu_import">Import Notes</string>
 
     <string name="button_ok">OK</string>
     <string name="text_title">Title:</string>
@@ -40,4 +42,10 @@
     <string name="error_title">Error</string>
     <string name="error_message">Error loading note</string>
     <string name="nothing_to_save">There is nothing to save</string>
+    
+    <!-- 添加缺失的字符串资源 -->
+    <string name="note_copied">Note copied</string>
+    <string name="note_deleted">Note deleted</string>
+    <string name="note_marked_complete">Note marked as complete</string>
+    <string name="note_marked_incomplete">Note marked as incomplete</string>
 </resources>

@@ -150,5 +150,21 @@ public final class NotePad {
          * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
          */
         public static final String COLUMN_NAME_MODIFICATION_DATE = "modified";
+
+        /**
+         * Column name for the todo status
+         * <P>Type: INTEGER (0 for pending, 1 for completed)</P>
+         */
+        public static final String COLUMN_NAME_STATUS = "status";
+
+        /**
+         * Status value for pending todo items
+         */
+        public static final int STATUS_PENDING = 0;
+
+        /**
+         * Status value for completed todo items
+         */
+        public static final int STATUS_COMPLETED = 1;
     }
 }

@@ -12,4 +12,6 @@
           android:icon="@drawable/ic_menu_delete"
           android:title="@string/menu_delete"
           android:showAsAction="ifRoom|withText" />
+    <item android:id="@+id/menu_toggle_status"
+          android:title="切换代办状态" />
 </menu>

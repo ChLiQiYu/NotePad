@@ -13,16 +13,28 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<view xmlns:android="http://schemas.android.com/apk/res/android"
-    class="com.example.android.notepad.NoteEditor$LinedEditText"
-    android:id="@+id/note"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/transparent"
-    android:padding="5dp"
-    android:scrollbars="vertical"
-    android:fadingEdge="vertical"
-    android:gravity="top"
-    android:textSize="22sp"
-    android:capitalize="sentences"
-/>
+    android:orientation="vertical">
+    
+    <CheckBox android:id="@+id/todo_checkbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="标记为代办事项"
+        android:padding="8dp" />
+    
+    <view class="com.example.android.notepad.NoteEditor$LinedEditText"
+        android:id="@+id/note"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent"
+        android:padding="5dp"
+        android:scrollbars="vertical"
+        android:fadingEdge="vertical"
+        android:gravity="top"
+        android:textSize="22sp"
+        android:capitalize="sentences" />
+        
+</LinearLayout>

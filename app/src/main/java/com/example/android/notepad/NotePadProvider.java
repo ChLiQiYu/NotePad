@@ -63,7 +63,7 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
     /**
      * The database version
      */
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     /**
      * A projection map used to select columns from the database
@@ -99,6 +99,12 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
     // The incoming URI matches the Live Folder URI pattern
     private static final int LIVE_FOLDER_NOTES = 3;
 
+    // The incoming URI matches the Todo notes URI pattern
+    private static final int NOTES_TODO = 4;
+
+    // The incoming URI matches the Normal notes URI pattern
+    private static final int NOTES_NORMAL = 5;
+
     /**
      * A UriMatcher instance
      */
@@ -130,6 +136,12 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
         // live folder operation
         sUriMatcher.addURI(NotePad.AUTHORITY, "live_folders/notes", LIVE_FOLDER_NOTES);
 
+        // Add a pattern that routes URIs terminated with "notes/todo" to a TODO notes operation
+        sUriMatcher.addURI(NotePad.AUTHORITY, "notes/todo", NOTES_TODO);
+
+        // Add a pattern that routes URIs terminated with "notes/normal" to a NORMAL notes operation
+        sUriMatcher.addURI(NotePad.AUTHORITY, "notes/normal", NOTES_NORMAL);
+
         /*
          * Creates and initializes a projection map that returns all columns
          */
@@ -155,6 +167,9 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
         sNotesProjectionMap.put(
                 NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
                 NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE);
+
+        // Maps "status" to "status"
+        sNotesProjectionMap.put(NotePad.Notes.COLUMN_NAME_STATUS, NotePad.Notes.COLUMN_NAME_STATUS);
 
         /*
          * Creates an initializes a projection map for handling Live Folders
@@ -196,7 +211,8 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
                    + NotePad.Notes.COLUMN_NAME_TITLE + " TEXT,"
                    + NotePad.Notes.COLUMN_NAME_NOTE + " TEXT,"
                    + NotePad.Notes.COLUMN_NAME_CREATE_DATE + " INTEGER,"
-                   + NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE + " INTEGER"
+                   + NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE + " INTEGER,"
+                   + NotePad.Notes.COLUMN_NAME_STATUS + " INTEGER DEFAULT 0"
                    + ");");
        }
 
@@ -212,6 +228,18 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
 
            // Logs that the database is being upgraded
            Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
+                   + newVersion);
+
+           // Handle different upgrade paths based on old version
+           if (oldVersion < 3) {
+               // Add status column to existing notes table
+               db.execSQL("ALTER TABLE notes ADD COLUMN " + NotePad.Notes.COLUMN_NAME_STATUS + " INTEGER DEFAULT 0");
+           }
+
+           // Uncomment the following lines if you want to recreate the database
+           // (but this will destroy all existing data)
+           /*
+           Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                    + newVersion + ", which will destroy all old data");
 
            // Kills the table and existing data
@@ -219,6 +247,7 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
 
            // Recreates the database with a new version
            onCreate(db);
+           */
        }
    }
 
@@ -281,6 +310,18 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
            case LIVE_FOLDER_NOTES:
                // If the incoming URI is from a live folder, chooses the live folder projection.
                qb.setProjectionMap(sLiveFolderProjectionMap);
+               break;
+
+           case NOTES_TODO:
+               // If the incoming URI is for todo notes, chooses the Notes projection and filters by status
+               qb.setProjectionMap(sNotesProjectionMap);
+               qb.appendWhere(NotePad.Notes.COLUMN_NAME_STATUS + "=" + NotePad.Notes.STATUS_COMPLETED);
+               break;
+
+           case NOTES_NORMAL:
+               // If the incoming URI is for normal notes, chooses the Notes projection and filters by status
+               qb.setProjectionMap(sNotesProjectionMap);
+               qb.appendWhere(NotePad.Notes.COLUMN_NAME_STATUS + "=" + NotePad.Notes.STATUS_PENDING);
                break;
 
            default:
@@ -748,5 +789,37 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
      */
     DatabaseHelper getOpenHelperForTest() {
         return mOpenHelper;
+    }
+
+    /**
+     * Toggles the todo status of a note
+     *
+     * @param noteId The ID of the note to toggle
+     * @return The number of rows affected
+     */
+    public int toggleTodoStatus(long noteId) {
+        // Get the current status of the note
+        Uri noteUri = ContentUris.withAppendedId(NotePad.Notes.CONTENT_ID_URI_BASE, noteId);
+        String[] projection = { NotePad.Notes.COLUMN_NAME_STATUS };
+        Cursor cursor = query(noteUri, projection, null, null, null);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            int currentStatus = cursor.getInt(cursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_STATUS));
+            cursor.close();
+
+            // Toggle the status
+            int newStatus = (currentStatus == NotePad.Notes.STATUS_PENDING) ? 
+                    NotePad.Notes.STATUS_COMPLETED : NotePad.Notes.STATUS_PENDING;
+
+            // Update the note with the new status
+            ContentValues values = new ContentValues();
+            values.put(NotePad.Notes.COLUMN_NAME_STATUS, newStatus);
+            return update(noteUri, values, null, null);
+        } else {
+            if (cursor != null) {
+                cursor.close();
+            }
+            return 0;
+        }
     }
 }

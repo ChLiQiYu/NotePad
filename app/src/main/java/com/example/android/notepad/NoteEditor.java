@@ -38,6 +38,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.CheckBox;
 import android.widget.EditText;
 
 /**
@@ -62,7 +63,8 @@ public class NoteEditor extends Activity {
         new String[] {
             NotePad.Notes._ID,
             NotePad.Notes.COLUMN_NAME_TITLE,
-            NotePad.Notes.COLUMN_NAME_NOTE
+            NotePad.Notes.COLUMN_NAME_NOTE,
+            NotePad.Notes.COLUMN_NAME_STATUS
     };
 
     // A label for the saved state of the activity
@@ -78,6 +80,7 @@ public class NoteEditor extends Activity {
     private Uri mUri;
     private Cursor mCursor;
     private EditText mText;
+    private CheckBox mTodoCheckBox;
     private String mOriginalContent;
 
     /**
@@ -229,6 +232,9 @@ public class NoteEditor extends Activity {
 
         // Gets a handle to the EditText in the the layout.
         mText = (EditText) findViewById(R.id.note);
+        
+        // Gets a handle to the CheckBox in the layout.
+        mTodoCheckBox = (CheckBox) findViewById(R.id.todo_checkbox);
 
         /*
          * If this Activity had stopped previously, its state was written the ORIGINAL_CONTENT
@@ -296,7 +302,11 @@ public class NoteEditor extends Activity {
             if (mOriginalContent == null) {
                 mOriginalContent = note;
             }
-
+            
+            // Set the todo checkbox state based on the note's status
+            int colStatusIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_STATUS);
+            int status = mCursor.getInt(colStatusIndex);
+            mTodoCheckBox.setChecked(status == NotePad.Notes.STATUS_COMPLETED);
         /*
          * Something is wrong. The Cursor should always contain data. Report an error in the
          * note.
@@ -444,6 +454,13 @@ public class NoteEditor extends Activity {
             finish();
         } else if (id == R.id.menu_revert) {
             cancelNote();
+        } else if (id == R.id.menu_toggle_status) {
+            // Toggle the todo status
+            boolean isChecked = mTodoCheckBox.isChecked();
+            mTodoCheckBox.setChecked(!isChecked);
+            // Update the note to save the new status
+            String text = mText.getText().toString();
+            updateNote(text, null);
         }
         return super.onOptionsItemSelected(item);
     }
@@ -557,6 +574,10 @@ public class NoteEditor extends Activity {
 
         // This puts the desired notes text into the map.
         values.put(NotePad.Notes.COLUMN_NAME_NOTE, text);
+        
+        // Set the status based on the checkbox state
+        int status = mTodoCheckBox.isChecked() ? NotePad.Notes.STATUS_COMPLETED : NotePad.Notes.STATUS_PENDING;
+        values.put(NotePad.Notes.COLUMN_NAME_STATUS, status);
 
         /*
          * Updates the provider with the new values in the map. The ListView is updated
