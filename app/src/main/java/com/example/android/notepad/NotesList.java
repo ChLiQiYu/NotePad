@@ -129,6 +129,25 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
                 dateView.setText("");
             }
 
+            // Status label
+            TextView statusLabel = (TextView) view.findViewById(R.id.status_label);
+            if (statusLabel != null) {
+                int status = cursor.getInt(COLUMN_INDEX_STATUS);
+                switch (status) {
+                    case Notes.STATUS_COMPLETED:
+                        statusLabel.setText(context.getString(R.string.status_completed));
+                        statusLabel.setBackgroundResource(R.drawable.status_completed_background);
+                        statusLabel.setVisibility(View.VISIBLE);
+                        break;
+                    case Notes.STATUS_PENDING:
+                    default:
+                        statusLabel.setText(context.getString(R.string.status_pending));
+                        statusLabel.setBackgroundResource(R.drawable.status_pending_background);
+                        statusLabel.setVisibility(View.VISIBLE);
+                        break;
+                }
+            }
+
             // Status icon
             ImageView statusIcon = (ImageView) view.findViewById(R.id.status_icon);
             if (statusIcon != null) {

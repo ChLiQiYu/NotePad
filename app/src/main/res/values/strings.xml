@@ -15,37 +15,42 @@
 -->
 
 <resources>
-    <string name="app_name">NotePad</string>
-    <string name="live_folder_name">Notes</string>
+    <string name="app_name">记事本</string>
+    <string name="live_folder_name">笔记</string>
 
-    <string name="title_edit_title">Note title:</string>
-    <string name="title_create">New note</string>
-    <string name="title_edit">Edit: %1$s</string>
-    <string name="title_notes_list">Notes</string>
+    <string name="title_edit_title">笔记标题:</string>
+    <string name="title_create">新建笔记</string>
+    <string name="title_edit">编辑: %1$s</string>
+    <string name="title_notes_list">笔记</string>
 
-    <string name="menu_add">New note</string>
-    <string name="menu_save">Save</string>
-    <string name="menu_delete">Delete</string>
-    <string name="menu_open">Open</string>
-    <string name="menu_revert">Revert changes</string>
-    <string name="menu_copy">Copy</string>
-    <string name="menu_paste">Paste</string>
-    <string name="menu_export">Export Notes</string>
-    <string name="menu_import">Import Notes</string>
+    <string name="menu_add">新建笔记</string>
+    <string name="menu_save">保存</string>
+    <string name="menu_delete">删除</string>
+    <string name="menu_open">打开</string>
+    <string name="menu_revert">撤销更改</string>
+    <string name="menu_copy">复制</string>
+    <string name="menu_paste">粘贴</string>
+    <string name="menu_export">导出笔记</string>
+    <string name="menu_import">导入笔记</string>
 
-    <string name="button_ok">OK</string>
-    <string name="text_title">Title:</string>
+    <string name="button_ok">确定</string>
+    <string name="text_title">标题:</string>
 
-    <string name="resolve_edit">Edit note</string>
-    <string name="resolve_title">Edit title</string>
+    <string name="resolve_edit">编辑笔记</string>
+    <string name="resolve_title">编辑标题</string>
 
-    <string name="error_title">Error</string>
-    <string name="error_message">Error loading note</string>
-    <string name="nothing_to_save">There is nothing to save</string>
+    <string name="error_title">错误</string>
+    <string name="error_message">加载笔记时出错</string>
+    <string name="nothing_to_save">没有需要保存的内容</string>
     
     <!-- 添加缺失的字符串资源 -->
-    <string name="note_copied">Note copied</string>
-    <string name="note_deleted">Note deleted</string>
-    <string name="note_marked_complete">Note marked as complete</string>
-    <string name="note_marked_incomplete">Note marked as incomplete</string>
+    <string name="note_copied">笔记已复制</string>
+    <string name="note_deleted">笔记已删除</string>
+    <string name="note_marked_complete">笔记标记为已完成</string>
+    <string name="note_marked_incomplete">笔记标记为未完成</string>
+    
+    <!-- 添加状态相关的字符串资源 -->
+    <string name="status_pending">待办</string>
+    <string name="status_in_progress">进行中</string>
+    <string name="status_completed">已完成</string>
 </resources>
