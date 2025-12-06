@@ -678,20 +678,7 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
             editIntent.setClass(this, NoteEditor.class);
             startActivity(editIntent);
             return true;
-        } else if (itemId == R.id.context_copy) {
-            // Gets a handle to the clipboard service.
-            ClipboardManager clipboard = (ClipboardManager)
-                    getSystemService(Context.CLIPBOARD_SERVICE);
-
-            if (clipboard != null) {
-                // Copies the notes URI to the clipboard. In effect, this copies the note itself
-                clipboard.setPrimaryClip(ClipData.newUri(   // new clipboard item holding a URI
-                        getContentResolver(),               // resolver to retrieve URI info
-                        "Note",                             // label for the clip
-                        noteUri));                          // the URI
-                Toast.makeText(this, R.string.note_copied, Toast.LENGTH_SHORT).show();
-            }
-            return true;
+        // Copy functionality disabled as per requirements
         } else if (itemId == R.id.context_delete) {
             // Deletes the note from the provider by passing in a URI in note ID format.
             int rowsDeleted = getContentResolver().delete(

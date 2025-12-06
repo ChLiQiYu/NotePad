@@ -176,9 +176,8 @@ public class NoteEditor extends Activity {
             mState = STATE_EDIT;
             mUri = intent.getData();
 
-            // For an insert or paste action:
-        } else if (Intent.ACTION_INSERT.equals(action)
-                || Intent.ACTION_PASTE.equals(action)) {
+            // For an insert action:
+        } else if (Intent.ACTION_INSERT.equals(action)) {
 
             // Sets the Activity state to INSERT, gets the general note URI, and inserts an
             // empty record in the provider
@@ -251,14 +250,7 @@ public class NoteEditor extends Activity {
         
         mCursor = cursor;
 
-        // For a paste, initializes the data from clipboard.
-        // (Must be done after mCursor is initialized.)
-        if (Intent.ACTION_PASTE.equals(action)) {
-            // Does the paste
-            performPaste();
-            // Switches the state to EDIT so the title can be modified.
-            mState = STATE_EDIT;
-        }
+        // No paste handling - feature disabled
 
         // Sets the layout for this Activity. See res/layout/note_editor.xml
         setContentView(R.layout.note_editor);
@@ -581,80 +573,7 @@ public class NoteEditor extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-//BEGIN_INCLUDE(paste)
-    /**
-     * A helper method that replaces the note's data with the contents of the clipboard.
-     */
-    private final void performPaste() {
-
-        // Gets a handle to the Clipboard Manager
-        ClipboardManager clipboard = (ClipboardManager)
-                getSystemService(Context.CLIPBOARD_SERVICE);
-
-        // Gets a content resolver instance
-        ContentResolver cr = getContentResolver();
-
-        // Gets the clipboard data from the clipboard
-        ClipData clip = clipboard.getPrimaryClip();
-        if (clip != null) {
-
-            String text=null;
-            String title=null;
-
-            // Gets the first item from the clipboard data
-            ClipData.Item item = clip.getItemAt(0);
-
-            // Tries to get the item's contents as a URI pointing to a note
-            Uri uri = item.getUri();
-
-            // Tests to see that the item actually is an URI, and that the URI
-            // is a content URI pointing to a provider whose MIME type is the same
-            // as the MIME type supported by the Note pad provider.
-            if (uri != null && NotePad.Notes.CONTENT_ITEM_TYPE.equals(cr.getType(uri))) {
-
-                // The clipboard holds a reference to data with a note MIME type. This copies it.
-                Cursor orig = null;
-                try {
-                    orig = cr.query(
-                            uri,            // URI for the content provider
-                            PROJECTION,     // Get the columns referred to in the projection
-                            null,           // No selection variables
-                            null,           // No selection variables, so no criteria are needed
-                            null            // Use the default sort order
-                    );
-
-                    // If the Cursor is not null, and it contains at least one record
-                    // (moveToFirst() returns true), then this gets the note data from it.
-                    if (orig != null) {
-                        if (orig.moveToFirst()) {
-                            int colNoteIndex = orig.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
-                            int colTitleIndex = orig.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE);
-                            text = orig.getString(colNoteIndex);
-                            title = orig.getString(colTitleIndex);
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to query clipboard note data", e);
-                    Toast.makeText(this, "粘贴笔记数据失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                } finally {
-                    // Closes the cursor.
-                    if (orig != null) {
-                        orig.close();
-                    }
-                }
-            }
-
-            // If the contents of the clipboard wasn't a reference to a note, then
-            // this converts whatever it is to text.
-            if (text == null) {
-                text = item.coerceToText(this).toString();
-            }
-
-            // Updates the current note with the retrieved title and text.
-            updateNote(text, title);
-        }
-    }
-//END_INCLUDE(paste)
+    // Paste functionality disabled as per requirements
 
     /**
      * Replaces the current note contents with the text and title provided as arguments.
