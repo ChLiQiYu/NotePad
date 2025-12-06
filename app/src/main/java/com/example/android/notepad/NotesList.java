@@ -531,6 +531,13 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
             insertIntent.setClass(this, NoteEditor.class);
             startActivity(insertIntent);
             return true;
+        } else if (itemId == R.id.action_search) {
+            // 直接展开并聚焦搜索框
+            if (mSearchView != null) {
+                mSearchView.setIconified(false);
+                mSearchView.requestFocusFromTouch();
+            }
+            return true;
         } else if (itemId == R.id.action_more) {
             // 更多操作菜单已自动展开
             return true;
