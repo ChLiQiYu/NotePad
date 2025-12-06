@@ -28,6 +28,7 @@ import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -45,17 +46,22 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ResourceCursorAdapter;
 import android.widget.SearchView;
+import android.widget.SimpleAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+// 添加BottomSheetDialog相关导入
+
 
 import com.example.android.notepad.NotePad.Notes;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -76,7 +82,8 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             Notes._ID, // 0
             Notes.COLUMN_NAME_TITLE, // 1
             Notes.COLUMN_NAME_MODIFICATION_DATE, // 2
-            Notes.COLUMN_NAME_STATUS // 3
+            Notes.COLUMN_NAME_STATUS, // 3
+            Notes.COLUMN_NAME_CATEGORY_ID // 4 - 新增分类ID字段
     };
 
     /** The index of the title column */
@@ -85,6 +92,8 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     private static final int COLUMN_INDEX_MODIFICATION_DATE = 2;
     /** The index of the status column */
     private static final int COLUMN_INDEX_STATUS = 3;
+    /** The index of the category id column */
+    private static final int COLUMN_INDEX_CATEGORY_ID = 4;
 
     private SearchView mSearchView;
     private Spinner mCategoryFilterSpinner;
@@ -94,6 +103,12 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     private NotesCursorAdapter mAdapter;
     private Menu mOptionsMenu;
     private static final int LOADER_ID = 0;
+    
+    // 添加分类数据源和缓存
+    private CategoryDataSource mCategoryDataSource;
+    private Map<Long, String> mCategoryCache;
+    
+
 
     /**
      * Custom adapter to handle note list display with status icons and formatted dates
@@ -159,6 +174,38 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
                     statusIcon.setImageResource(R.drawable.ic_radio_button_unchecked_black_24dp);
                 }
             }
+            
+            // Category label
+            TextView categoryLabel = (TextView) view.findViewById(R.id.category_label);
+            if (categoryLabel != null) {
+                long categoryId = cursor.getLong(COLUMN_INDEX_CATEGORY_ID);
+                if (categoryId > 0) {
+                    // Try to get category name from cache first
+                    String categoryName = mCategoryCache.get(categoryId);
+                    
+                    // If not in cache, try to fetch from database
+                    if (categoryName == null) {
+                        Category category = mCategoryDataSource.getCategoryById(categoryId);
+                        if (category != null) {
+                            categoryName = category.getName();
+                            // Add to cache for future use
+                            mCategoryCache.put(categoryId, categoryName);
+                        }
+                    }
+                    
+                    // Display category name if found
+                    if (categoryName != null) {
+                        categoryLabel.setText(categoryName);
+                        categoryLabel.setVisibility(View.VISIBLE);
+                    } else {
+                        // Hide label if category not found
+                        categoryLabel.setVisibility(View.GONE);
+                    }
+                } else {
+                    // Hide label for notes with no category
+                    categoryLabel.setVisibility(View.GONE);
+                }
+            }
         }
     }
 
@@ -199,6 +246,11 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         mAdapter = new NotesCursorAdapter(this, null);
         setListAdapter(mAdapter);
 
+        // Initialize category data source and cache
+        mCategoryDataSource = new CategoryDataSource(this);
+        mCategoryCache = new HashMap<>();
+        initializeCategoryCache();
+
         // Initialize loader to load notes data
         getLoaderManager().initLoader(LOADER_ID, null, this);
         
@@ -211,6 +263,22 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
      */
     private void setupCategoryFilterSpinner() {
         // This will be implemented when we modify the layout to include the spinner
+    }
+    
+    /**
+     * Initialize category cache with all available categories
+     */
+    private void initializeCategoryCache() {
+        // Clear existing cache
+        mCategoryCache.clear();
+        
+        // Get all categories
+        List<Category> categories = mCategoryDataSource.getAllCategories();
+        
+        // Populate cache
+        for (Category category : categories) {
+            mCategoryCache.put(category.getId(), category.getName());
+        }
     }
 
     /**
@@ -251,19 +319,6 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         }
     }
 
-    /**
-     * Called when the user clicks the device's Menu button the first time for
-     * this Activity. Android passes in a Menu object that is populated with items.
-     *
-     * Sets up a menu that provides the Insert option plus a list of alternative actions for
-     * this Activity. Other applications that want to handle notes can "register" themselves in
-     * Android by providing an intent filter that includes the category ALTERNATIVE and the
-     * mimeTYpe NotePad.Notes.CONTENT_TYPE. If they do this, the code in onCreateOptionsMenu()
-     * will add the Activity that contains the intent filter to its list of options. In effect,
-     * the menu will offer the user other applications that can handle notes.
-     * @param menu A Menu object, to which menu items should be added.
-     * @return True, always. The menu should be displayed.
-     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate menu from XML resource
@@ -313,11 +368,14 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             }
         });
 
-        mSearchView.setOnQueryTextFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus && mSearchView != null) {
-                if (mSearchView.getQuery().toString().isEmpty()) {
-                    mCurrentFilter = "";
-                    restartLoader();
+        mSearchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (!hasFocus && mSearchView != null) {
+                    if (mSearchView.getQuery().toString().isEmpty()) {
+                        mCurrentFilter = "";
+                        restartLoader();
+                    }
                 }
             }
         });
@@ -461,6 +519,9 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             mCurrentUri = Uri.withAppendedPath(Notes.CONTENT_URI, "normal");
             mCurrentCategoryId = 0;
             restartLoader();
+            return true;
+        } else if (itemId == R.id.menu_filter_by_category) {
+            // 分类筛选功能已通过子菜单实现，无需额外处理
             return true;
         } else if (itemId >= Menu.FIRST && itemId <= Menu.FIRST + 1000) {
             // Handle category filter
@@ -748,9 +809,13 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         mAdapter.swapCursor(null);
     }
 
+
+
     @Override
     protected void onResume() {
         super.onResume();
+        // Refresh category cache when resuming
+        initializeCategoryCache();
         restartLoader();
     }
 }

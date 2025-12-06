@@ -46,6 +46,18 @@
             android:background="@drawable/status_background"
             android:visibility="gone" />
 
+        <!-- 添加分类标签TextView -->
+        <TextView android:id="@+id/category_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
+            android:background="@drawable/status_background"
+            android:visibility="gone" />
+
         <TextView android:id="@android:id/text2"
             android:layout_width="match_parent"
             android:layout_height="0dp"

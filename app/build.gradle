@@ -30,4 +30,6 @@ android {
 dependencies {
     // 使用与API 23兼容的JSON库版本
     implementation 'org.json:json:20140107'
+    // 添加Material Design组件支持Bottom Sheet
+    implementation 'com.android.support:design:23.4.0'  // 必须 ≤ compileSdkVersion
 }
