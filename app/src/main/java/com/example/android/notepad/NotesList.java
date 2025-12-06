@@ -50,8 +50,7 @@ import android.widget.SimpleAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-// 添加BottomSheetDialog相关导入
-
+import android.graphics.Color;
 
 import com.example.android.notepad.NotePad.Notes;
 
@@ -170,8 +169,12 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
                 // Use compat drawables for API 23
                 if (status == Notes.STATUS_COMPLETED) {
                     statusIcon.setImageResource(R.drawable.ic_check_box_black_24dp);
+                    // 设置已完成状态的图标颜色
+                    statusIcon.setColorFilter(context.getResources().getColor(android.R.color.holo_green_dark));
                 } else {
                     statusIcon.setImageResource(R.drawable.ic_radio_button_unchecked_black_24dp);
+                    // 设置待办状态的图标颜色
+                    statusIcon.setColorFilter(context.getResources().getColor(android.R.color.darker_gray));
                 }
             }
             
@@ -197,6 +200,8 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
                     if (categoryName != null) {
                         categoryLabel.setText(categoryName);
                         categoryLabel.setVisibility(View.VISIBLE);
+                        // 设置分类标签的背景颜色
+                        categoryLabel.setBackgroundResource(R.drawable.status_background);
                     } else {
                         // Hide label if category not found
                         categoryLabel.setVisibility(View.GONE);
