@@ -16,66 +16,83 @@
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="?android:attr/listPreferredItemHeight"
+    android:layout_height="wrap_content"
+    android:minHeight="72dp"
     android:orientation="horizontal"
-    android:paddingLeft="5dip">
-    
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
     <LinearLayout
         android:layout_width="0dp"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:layout_gravity="center_vertical"
         android:orientation="vertical">
-    
+
+        <!-- 标题文本 -->
         <TextView android:id="@android:id/text1"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:gravity="center_vertical"
             android:singleLine="true"
             android:textColor="#212121"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
 
-        <!-- 添加状态标签TextView -->
-        <TextView android:id="@+id/status_label"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:background="@drawable/status_background"
-            android:visibility="gone"
-            android:textColor="#FFFFFF" />
+            android:orientation="horizontal">
 
-        <!-- 添加分类标签TextView -->
-        <TextView android:id="@+id/category_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp"
-            android:background="@drawable/status_background"
-            android:visibility="gone"
-            android:textColor="#FFFFFF" />
+            <!-- 状态标签TextView -->
+            <TextView android:id="@+id/status_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/status_background"
+                android:visibility="gone"
+                android:textColor="#FFFFFF" />
 
+            <!-- 分类标签TextView -->
+            <TextView android:id="@+id/category_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/status_background"
+                android:visibility="gone"
+                android:textColor="#FFFFFF" />
+
+        </LinearLayout>
+
+        <!-- 修改时间文本 -->
         <TextView android:id="@android:id/text2"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:textColor="#757575"
             android:gravity="center_vertical"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:layout_marginTop="4dp" />
+
     </LinearLayout>
-        
+
+    <!-- 状态图标 -->
     <ImageView android:id="@+id/status_icon"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:padding="8dp"
-        android:gravity="center_vertical" />
-        
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:padding="8dp" />
+
 </LinearLayout>

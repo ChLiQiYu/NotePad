@@ -16,7 +16,6 @@
 
 package com.example.android.notepad;
 
-import android.app.ListActivity;
 import android.app.LoaderManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -32,9 +31,13 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -42,6 +45,7 @@ import android.view.SubMenu;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ResourceCursorAdapter;
@@ -51,7 +55,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.graphics.Color;
-
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.example.android.notepad.NotePad.Notes;
 
 import java.text.SimpleDateFormat;
@@ -69,7 +75,7 @@ import java.util.Map;
  *
  * Uses LoaderManager for asynchronous database operations to avoid ANR on API 23 devices.
  */
-public class NotesList extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+public class NotesList extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     // For logging and debugging
     private static final String TAG = "NotesList";
@@ -94,6 +100,7 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     /** The index of the category id column */
     private static final int COLUMN_INDEX_CATEGORY_ID = 4;
 
+    private ListView mListView; // 添加ListView引用
     private SearchView mSearchView;
     private Spinner mCategoryFilterSpinner;
     private String mCurrentFilter = "";
@@ -102,6 +109,8 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     private NotesCursorAdapter mAdapter;
     private Menu mOptionsMenu;
     private static final int LOADER_ID = 0;
+    private static final int PERMISSION_REQUEST_CODE = 1001;
+    private Toolbar mToolbar; // 添加Toolbar引用
     
     // 添加分类数据源和缓存
     private CategoryDataSource mCategoryDataSource;
@@ -169,12 +178,12 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
                 // Use compat drawables for API 23
                 if (status == Notes.STATUS_COMPLETED) {
                     statusIcon.setImageResource(R.drawable.ic_check_box_black_24dp);
-                    // 设置已完成状态的图标颜色
-                    statusIcon.setColorFilter(context.getResources().getColor(android.R.color.holo_green_dark));
+                    // 设置已完成状态的图标颜色（兼容API 23）
+                    statusIcon.setColorFilter(ContextCompat.getColor(context, android.R.color.holo_green_dark));
                 } else {
                     statusIcon.setImageResource(R.drawable.ic_radio_button_unchecked_black_24dp);
-                    // 设置待办状态的图标颜色
-                    statusIcon.setColorFilter(context.getResources().getColor(android.R.color.darker_gray));
+                    // 设置待办状态的图标颜色（兼容API 23）
+                    statusIcon.setColorFilter(ContextCompat.getColor(context, android.R.color.darker_gray));
                 }
             }
             
@@ -220,6 +229,19 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // 设置布局文件
+        setContentView(R.layout.activity_notes_list);
+        
+        // 初始化Toolbar
+        mToolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(mToolbar);
+
+        // 获取ListView引用
+        mListView = (ListView) findViewById(R.id.notes_list);
+        
+        // 为ListView注册上下文菜单
+        registerForContextMenu(mListView);
 
         // The user does not need to hold down the key to use menu shortcuts.
         setDefaultKeyMode(DEFAULT_KEYS_SHORTCUT);
@@ -240,27 +262,31 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             mCurrentUri = intent.getData();
         }
 
-        /*
-         * Sets the callback for context menu activation for the ListView. The listener is set
-         * to be this Activity. The effect is that context menus are enabled for items in the
-         * ListView, and the context menu is handled by a method in NotesList.
-         */
-        getListView().setOnCreateContextMenuListener(this);
-
         // Create adapter with null cursor initially
         mAdapter = new NotesCursorAdapter(this, null);
-        setListAdapter(mAdapter);
+        mListView.setAdapter(mAdapter);
 
         // Initialize category data source and cache
         mCategoryDataSource = new CategoryDataSource(this);
         mCategoryCache = new HashMap<>();
         initializeCategoryCache();
 
+        // Check and request permissions
+        checkAndRequestPermissions();
+
         // Initialize loader to load notes data
         getLoaderManager().initLoader(LOADER_ID, null, this);
         
         // Setup category filter spinner
         setupCategoryFilterSpinner();
+        
+        // 为ListView设置点击监听器
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                onListItemClick(mListView, view, position, id);
+            }
+        });
     }
 
     /**
@@ -297,27 +323,35 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         List<Category> categories = categoryDataSource.getAllCategories();
         
         // Find the category filter menu item
-        MenuItem categoryFilterItem = menu.findItem(R.id.menu_filter_by_category);
-        if (categoryFilterItem != null) {
+        MenuItem moreItem = menu.findItem(R.id.action_more);
+        if (moreItem != null) {
             // Get the submenu
-            SubMenu subMenu = categoryFilterItem.getSubMenu();
-            if (subMenu != null) {
-                // Clear existing items
-                subMenu.clear();
-                
-                // Add "All" option
-                MenuItem allItem = subMenu.add(Menu.NONE, R.id.menu_show_all, Menu.NONE, "所有笔记");
-                allItem.setCheckable(true);
-                if (mCurrentCategoryId == 0) {
-                    allItem.setChecked(true);
-                }
-                
-                // Add categories
-                for (Category category : categories) {
-                    MenuItem item = subMenu.add(Menu.NONE, Menu.FIRST + (int) category.getId(), Menu.NONE, category.getName());
-                    item.setCheckable(true);
-                    if (mCurrentCategoryId == category.getId()) {
-                        item.setChecked(true);
+            SubMenu moreSubMenu = moreItem.getSubMenu();
+            if (moreSubMenu != null) {
+                // Find the category filter menu item within the more submenu
+                MenuItem categoryFilterItem = moreSubMenu.findItem(R.id.menu_filter_by_category);
+                if (categoryFilterItem != null) {
+                    // Get the submenu of the category filter item
+                    SubMenu subMenu = categoryFilterItem.getSubMenu();
+                    if (subMenu != null) {
+                        // Clear existing items
+                        subMenu.clear();
+                        
+                        // Add "All" option
+                        MenuItem allItem = subMenu.add(Menu.NONE, R.id.menu_show_all, Menu.NONE, "所有笔记");
+                        allItem.setCheckable(true);
+                        if (mCurrentCategoryId == 0) {
+                            allItem.setChecked(true);
+                        }
+                        
+                        // Add categories
+                        for (Category category : categories) {
+                            MenuItem item = subMenu.add(Menu.NONE, Menu.FIRST + (int) category.getId(), Menu.NONE, category.getName());
+                            item.setCheckable(true);
+                            if (mCurrentCategoryId == category.getId()) {
+                                item.setChecked(true);
+                            }
+                        }
                     }
                 }
             }
@@ -327,11 +361,10 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate menu from XML resource
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.list_options_menu, menu);
+        getMenuInflater().inflate(R.menu.toolbar_menu, menu);
 
         // Get the SearchView and set up the listener
-        MenuItem searchItem = menu.findItem(R.id.menu_search);
+        MenuItem searchItem = menu.findItem(R.id.action_search);
         mSearchView = (SearchView) searchItem.getActionView();
         setupSearchView();
 
@@ -340,15 +373,6 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         
         // Store reference to menu for later updates
         mOptionsMenu = menu;
-
-        // Generate any additional actions that can be performed on the
-        // overall list.  In a normal install, there are no additional
-        // actions found here, but this allows other applications to extend
-        // our menu with their own actions.
-        Intent intent = new Intent(null, getIntent().getData());
-        intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
-        menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
-                new ComponentName(this, NotesList.class), null, intent, 0, null);
 
         return true;
     }
@@ -406,14 +430,15 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         ClipboardManager clipboard = (ClipboardManager)
                 getSystemService(Context.CLIPBOARD_SERVICE);
 
-
         MenuItem mPasteItem = menu.findItem(R.id.menu_paste);
 
         // If the clipboard contains an item, enables the Paste option on the menu.
         boolean hasClipData = clipboard != null && clipboard.hasPrimaryClip() &&
                 clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0;
 
-        mPasteItem.setEnabled(hasClipData);
+        if (mPasteItem != null) {
+            mPasteItem.setEnabled(hasClipData);
+        }
 
         // Gets the number of notes currently being displayed.
         final boolean haveItems = mAdapter.getCount() > 0;
@@ -426,8 +451,15 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         if (haveItems) {
 
             // This is the selected item.
-            Uri uri = ContentUris.withAppendedId(getIntent().getData(), getSelectedItemId());
-
+            // Since we're using AppCompatActivity instead of ListActivity, we need to get the selected item differently
+            long selectedId = mListView.getSelectedItemId();
+            // Check if a valid item is selected
+            if (selectedId == AdapterView.INVALID_ROW_ID) {
+                // No item selected, remove alternative actions
+                menu.removeGroup(Menu.CATEGORY_ALTERNATIVE);
+                return true;
+            }
+            Uri uri = ContentUris.withAppendedId(getIntent().getData(), selectedId);
             // Creates an array of Intents with one element. This will be used to send an Intent
             // based on the selected menu item.
             Intent[] specifics = new Intent[1];
@@ -492,12 +524,15 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
         
-        // 使用if-else替换switch-case以解决常量表达式问题
-        if (itemId == R.id.menu_add) {
+        // 处理Toolbar菜单项
+        if (itemId == R.id.action_add) {
             // 修复Intent调用非导出组件问题
             Intent insertIntent = new Intent(Intent.ACTION_INSERT, getIntent().getData());
             insertIntent.setClass(this, NoteEditor.class);
             startActivity(insertIntent);
+            return true;
+        } else if (itemId == R.id.action_more) {
+            // 更多操作菜单已自动展开
             return true;
         } else if (itemId == R.id.menu_paste) {
             // 修复Intent调用非导出组件问题
@@ -505,7 +540,10 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             pasteIntent.setClass(this, NoteEditor.class);
             startActivity(pasteIntent);
             return true;
-        } else if (itemId == R.id.menu_manage_categories) {
+        }
+        
+        // 处理更多操作子菜单项
+        if (itemId == R.id.menu_manage_categories) {
             startActivity(new Intent(this, CategoriesListActivity.class));
             return true;
         } else if (itemId == R.id.menu_show_all) {
@@ -526,7 +564,8 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
             restartLoader();
             return true;
         } else if (itemId == R.id.menu_filter_by_category) {
-            // 分类筛选功能已通过子菜单实现，无需额外处理
+            // 显示分类筛选Bottom Sheet
+            showCategoryFilterBottomSheet();
             return true;
         } else if (itemId >= Menu.FIRST && itemId <= Menu.FIRST + 1000) {
             // Handle category filter
@@ -699,28 +738,98 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         
         // Update menu item checked state
         if (mOptionsMenu != null) {
-            MenuItem categoryFilterItem = mOptionsMenu.findItem(R.id.menu_filter_by_category);
-            if (categoryFilterItem != null) {
-                SubMenu subMenu = categoryFilterItem.getSubMenu();
-                if (subMenu != null) {
-                    // Uncheck all items
-                    for (int i = 0; i < subMenu.size(); i++) {
-                        MenuItem item = subMenu.getItem(i);
-                        item.setChecked(false);
-                    }
-                    
-                    // Check the selected item
-                    for (int i = 0; i < subMenu.size(); i++) {
-                        MenuItem item = subMenu.getItem(i);
-                        if ((categoryId == 0 && item.getItemId() == R.id.menu_show_all) ||
-                            (categoryId > 0 && item.getItemId() == Menu.FIRST + categoryId)) {
-                            item.setChecked(true);
-                            break;
+            MenuItem moreItem = mOptionsMenu.findItem(R.id.action_more);
+            if (moreItem != null) {
+                SubMenu moreSubMenu = moreItem.getSubMenu();
+                if (moreSubMenu != null) {
+                    MenuItem categoryFilterItem = moreSubMenu.findItem(R.id.menu_filter_by_category);
+                    if (categoryFilterItem != null) {
+                        SubMenu subMenu = categoryFilterItem.getSubMenu();
+                        if (subMenu != null) {
+                            // Uncheck all items
+                            for (int i = 0; i < subMenu.size(); i++) {
+                                MenuItem item = subMenu.getItem(i);
+                                item.setChecked(false);
+                            }
+                            
+                            // Check the selected item
+                            for (int i = 0; i < subMenu.size(); i++) {
+                                MenuItem item = subMenu.getItem(i);
+                                if ((categoryId == 0 && item.getItemId() == R.id.menu_show_all) ||
+                                    (categoryId > 0 && item.getItemId() == Menu.FIRST + categoryId)) {
+                                    item.setChecked(true);
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+    
+    /**
+     * 显示分类筛选Bottom Sheet
+     */
+    private void showCategoryFilterBottomSheet() {
+        // 创建BottomSheetDialog
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        
+        // 加载布局
+        View view = LayoutInflater.from(this).inflate(R.layout.bottom_sheet_category_filter, null);
+        bottomSheetDialog.setContentView(view);
+        
+        // 获取ListView并设置数据
+        ListView categoryListView = (ListView) view.findViewById(R.id.category_list_view);
+        
+        // 获取所有分类
+        List<Category> categories = mCategoryDataSource.getAllCategories();
+        
+        // 创建分类列表项
+        List<String> categoryNames = new ArrayList<>();
+        categoryNames.add("所有笔记"); // 添加"所有笔记"选项
+        
+        // 添加实际分类
+        for (Category category : categories) {
+            categoryNames.add(category.getName());
+        }
+        
+        // 创建适配器
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, 
+                android.R.layout.simple_list_item_1, categoryNames);
+        categoryListView.setAdapter(adapter);
+        
+        // 设置列表项点击监听器
+        categoryListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                // 关闭Bottom Sheet
+                bottomSheetDialog.dismiss();
+                
+                // 处理分类筛选
+                if (position == 0) {
+                    // 显示所有笔记
+                    filterByCategory(0);
+                } else {
+                    // 根据分类名称查找分类ID
+                    String selectedCategoryName = categoryNames.get(position);
+                    long selectedCategoryId = 0;
+                    
+                    for (Category category : categories) {
+                        if (category.getName().equals(selectedCategoryName)) {
+                            selectedCategoryId = category.getId();
+                            break;
+                        }
+                    }
+                    
+                    // 应用筛选
+                    filterByCategory(selectedCategoryId);
+                }
+            }
+        });
+        
+        // 显示Bottom Sheet
+        bottomSheetDialog.show();
     }
 
     /**
@@ -734,8 +843,13 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
      * @param position The position of v in the displayed list
      * @param id The row ID of the clicked item
      */
-    @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
+        // Check if intent data is valid
+        if (getIntent().getData() == null) {
+            Log.e(TAG, "Intent data is null, cannot construct URI");
+            return;
+        }
+        
         // Construct the URI for the selected item
         Uri uri = ContentUris.withAppendedId(getIntent().getData(), id);
 
@@ -814,7 +928,39 @@ public class NotesList extends ListActivity implements LoaderManager.LoaderCallb
         mAdapter.swapCursor(null);
     }
 
-
+    /**
+     * Check and request storage permissions if needed
+     */
+    private void checkAndRequestPermissions() {
+        // Check if we have write permission
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Request the permission
+            ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                 android.Manifest.permission.READ_EXTERNAL_STORAGE},
+                    PERMISSION_REQUEST_CODE);
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case PERMISSION_REQUEST_CODE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission was granted, yay!
+                    Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Permission denied, boo!
+                    Toast.makeText(this, "存储权限被拒绝，某些功能可能无法正常工作", Toast.LENGTH_LONG).show();
+                }
+                return;
+            }
+        }
+    }
 
     @Override
     protected void onResume() {

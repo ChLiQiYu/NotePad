@@ -21,8 +21,10 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 /**
  * This Activity allows the user to edit a note's title. It displays a floating window
@@ -34,6 +36,8 @@ import android.widget.EditText;
  * or {@link android.os.AsyncTask} object to perform operations asynchronously on a separate thread.
  */
 public class TitleEditor extends Activity {
+
+    private static final String TAG = "TitleEditor";
 
     /**
      * This is a special intent action that means "edit the title of a note".
@@ -81,14 +85,20 @@ public class TitleEditor extends Activity {
          * the block will be momentary, but in a real app you should use
          * android.content.AsyncQueryHandler or android.os.AsyncTask.
          */
-
-        mCursor = managedQuery(
-            mUri,        // The URI for the note that is to be retrieved.
-            PROJECTION,  // The columns to retrieve
-            null,        // No selection criteria are used, so no where columns are needed.
-            null,        // No where columns are used, so no where values are needed.
-            null         // No sort order is needed.
-        );
+        try {
+            mCursor = getContentResolver().query(
+                mUri,        // The URI for the note that is to be retrieved.
+                PROJECTION,  // The columns to retrieve
+                null,        // No selection criteria are used, so no where columns are needed.
+                null,        // No where columns are used, so no where values are needed.
+                null         // No sort order is needed.
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to query note title", e);
+            Toast.makeText(this, "加载笔记标题失败", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
         // Gets the View ID for the EditText box
         mText = (EditText) this.findViewById(R.id.title);
@@ -163,5 +173,15 @@ public class TitleEditor extends Activity {
 
     public void onClickOk(View v) {
         finish();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Close the cursor to prevent memory leaks
+        if (mCursor != null) {
+            mCursor.close();
+            mCursor = null;
+        }
     }
 }

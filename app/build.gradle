@@ -2,13 +2,13 @@ apply plugin: 'com.android.application'
 
 android {
     namespace 'com.example.android.notepad'
-    compileSdkVersion 23
-    buildToolsVersion "23.0.1"
+    compileSdkVersion 34
+    buildToolsVersion "34.0.0"
 
     defaultConfig {
         applicationId "com.example.android.notepad"
-        minSdkVersion 11
-        targetSdkVersion 23
+        minSdkVersion 23
+        targetSdkVersion 34
 
         testApplicationId "com.example.android.notepad.tests"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
@@ -25,11 +25,19 @@ android {
     lintOptions {
         abortOnError false
     }
+    
+    // 添加Java版本兼容性配置
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
-    // 使用与API 23兼容的JSON库版本
-    implementation 'org.json:json:20140107'
-    // 添加Material Design组件支持Bottom Sheet
-    implementation 'com.android.support:design:23.4.0'  // 必须 ≤ compileSdkVersion
+    // 使用AndroidX替代旧的Support库
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'com.google.android.material:material:1.6.1'
+    
+    // JSON库
+    implementation 'org.json:json:20220320'
 }

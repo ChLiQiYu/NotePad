@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    
+    <!-- 搜索按钮 -->
+    <item
+        android:id="@+id/action_search"
+        android:title="搜索"
+        android:icon="@android:drawable/ic_menu_search"
+        app:showAsAction="ifRoom|collapseActionView"
+        app:actionViewClass="android.widget.SearchView" />
+    
+    <!-- 新建笔记按钮 -->
+    <item
+        android:id="@+id/action_add"
+        android:title="@string/menu_add"
+        android:icon="@drawable/ic_menu_compose"
+        app:showAsAction="ifRoom" />
+    
+    <!-- 更多操作按钮 -->
+    <item
+        android:id="@+id/action_more"
+        android:title="更多"
+        android:icon="@android:drawable/ic_menu_more"
+        app:showAsAction="ifRoom">
+        <menu>
+            <!-- 粘贴 -->
+            <item android:id="@+id/menu_paste"
+                android:title="@string/menu_paste"
+                android:icon="@drawable/ic_menu_compose" />
+            
+            <!-- 管理分类 -->
+            <item android:id="@+id/menu_manage_categories"
+                android:title="管理分类" />
+            
+            <!-- 显示全部 -->
+            <item android:id="@+id/menu_show_all"
+                android:title="显示全部" />
+            
+            <!-- 仅显示代办 -->
+            <item android:id="@+id/menu_show_todo"
+                android:title="仅显示代办" />
+            
+            <!-- 仅显示普通笔记 -->
+            <item android:id="@+id/menu_show_normal"
+                android:title="仅显示普通笔记" />
+            
+            <!-- 按分类筛选 -->
+            <item android:id="@+id/menu_filter_by_category"
+                android:title="按分类筛选" />
+        </menu>
+    </item>
+</menu>
