@@ -39,6 +39,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -91,6 +92,7 @@ public class NoteEditor extends Activity {
     private EditText mText;
     private CheckBox mTodoCheckBox;
     private Spinner mCategorySpinner;
+    private Button mSaveButton;
     private CategoryDataSource mCategoryDataSource;
     private long mSelectedCategoryId;
     private String mOriginalContent;
@@ -263,6 +265,17 @@ public class NoteEditor extends Activity {
         
         // Gets a handle to the Spinner in the layout.
         mCategorySpinner = (Spinner) findViewById(R.id.category_spinner);
+        
+        // Gets a handle to the Save Button in the layout.
+        mSaveButton = (Button) findViewById(R.id.btn_save_note); // 初始化保存按钮
+        
+        // Set click listener for the save button
+        mSaveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                saveNote();
+            }
+        });
         
         // Initialize category data source
         mCategoryDataSource = new CategoryDataSource(this);
@@ -678,5 +691,14 @@ public class NoteEditor extends Activity {
             getContentResolver().delete(mUri, null, null);
             mText.setText("");
         }
+    }
+
+    /**
+     * Save the current note and finish the activity
+     */
+    private void saveNote() {
+        String text = mText.getText().toString();
+        updateNote(text, null);
+        finish();
     }
 }
