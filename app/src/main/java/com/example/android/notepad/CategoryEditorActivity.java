@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -39,6 +40,7 @@ public class CategoryEditorActivity extends Activity {
     private Category mCategory;
     private CategoryDataSource mCategoryDataSource;
     private EditText mNameEditText;
+    private Button mSaveButton;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +52,10 @@ public class CategoryEditorActivity extends Activity {
         
         // 获取界面元素
         mNameEditText = (EditText) findViewById(R.id.category_name);
+        mSaveButton = (Button) findViewById(R.id.btn_save_category);
+        
+        // 为保存按钮设置点击事件监听器
+        mSaveButton.setOnClickListener(v -> saveCategory());
         
         // 处理传入的意图
         Intent intent = getIntent();
