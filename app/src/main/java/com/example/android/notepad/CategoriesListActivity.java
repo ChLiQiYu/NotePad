@@ -16,9 +16,10 @@
 
 package com.example.android.notepad;
 
-import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -38,20 +39,39 @@ import java.util.Map;
 /**
  * 分类管理界面，显示所有分类列表
  */
-public class CategoriesListActivity extends ListActivity {
+public class CategoriesListActivity extends AppCompatActivity {
     private static final String TAG = "CategoriesListActivity";
     
     private CategoryDataSource mCategoryDataSource;
     private List<Map<String, Object>> mDataList;
     private SimpleAdapter mAdapter;
+    private ListView mListView;
+    private TextView mEmptyView;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_categories_list);
         
+        // 设置Toolbar作为ActionBar
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        
+        // 设置ActionBar标题
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("分类管理");
+            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+        }
+        
         // 初始化数据源
         mCategoryDataSource = new CategoryDataSource(this);
+        
+        // 初始化ListView和EmptyView
+        mListView = findViewById(android.R.id.list);
+        mEmptyView = findViewById(android.R.id.empty);
+        
+        // 设置ListView的EmptyView
+        mListView.setEmptyView(mEmptyView);
         
         // 初始化数据列表
         mDataList = new ArrayList<>();
@@ -65,10 +85,18 @@ public class CategoriesListActivity extends ListActivity {
                 new int[]{R.id.category_name, R.id.category_count}
         );
         
-        setListAdapter(mAdapter);
+        mListView.setAdapter(mAdapter);
+        
+        // 设置ListView点击监听
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                onListItemClick(position);
+            }
+        });
         
         // 注册上下文菜单
-        registerForContextMenu(getListView());
+        registerForContextMenu(mListView);
     }
     
     @Override
@@ -123,7 +151,7 @@ public class CategoriesListActivity extends ListActivity {
         if (itemId == R.id.menu_add_category) {
             // 启动分类编辑界面，创建新分类
             Intent intent = new Intent(this, CategoryEditorActivity.class);
-            startActivity(intent);
+            startActivityForResult(intent, 1); // 使用startActivityForResult以便在返回时刷新列表
             return true;
         }
         
@@ -146,7 +174,7 @@ public class CategoriesListActivity extends ListActivity {
         
         // 设置菜单标题
         @SuppressWarnings("unchecked")
-        Map<String, Object> item = (Map<String, Object>) getListAdapter().getItem(info.position);
+        Map<String, Object> item = (Map<String, Object>) mAdapter.getItem(info.position);
         String categoryName = (String) item.get("name");
         menu.setHeaderTitle(categoryName);
     }
@@ -161,7 +189,7 @@ public class CategoriesListActivity extends ListActivity {
         }
         
         @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) getListAdapter().getItem(info.position);
+        Map<String, Object> map = (Map<String, Object>) mAdapter.getItem(info.position);
         long categoryId = (Long) map.get("id");
         String categoryName = (String) map.get("name");
         
@@ -171,7 +199,7 @@ public class CategoriesListActivity extends ListActivity {
             // 编辑分类
             Intent intent = new Intent(this, CategoryEditorActivity.class);
             intent.putExtra(CategoryEditorActivity.EXTRA_CATEGORY_ID, categoryId);
-            startActivity(intent);
+            startActivityForResult(intent, 2); // 使用startActivityForResult以便在返回时刷新列表
             return true;
         } else if (itemId == R.id.menu_delete_category) {
             // 删除分类
@@ -206,10 +234,12 @@ public class CategoriesListActivity extends ListActivity {
         }
     }
     
-    @Override
-    protected void onListItemClick(ListView l, View v, int position, long id) {
+    /**
+     * ListView条目点击事件处理
+     */
+    private void onListItemClick(int position) {
         @SuppressWarnings("unchecked")
-        Map<String, Object> item = (Map<String, Object>) getListAdapter().getItem(position);
+        Map<String, Object> item = (Map<String, Object>) mAdapter.getItem(position);
         long categoryId = (Long) item.get("id");
         String categoryName = (String) item.get("name");
         
@@ -219,5 +249,14 @@ public class CategoriesListActivity extends ListActivity {
         resultIntent.putExtra("category_name", categoryName);
         setResult(RESULT_OK, resultIntent);
         finish();
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // 当从CategoryEditorActivity返回时，刷新分类列表
+        if ((requestCode == 1 || requestCode == 2) && resultCode == RESULT_OK) {
+            loadData();
+        }
     }
 }
