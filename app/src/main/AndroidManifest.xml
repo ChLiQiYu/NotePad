@@ -125,8 +125,8 @@
         <activity android:name="ImportActivity" android:label="@string/menu_import" />
         
         <!-- 添加分类管理Activity -->
-        <activity android:name="CategoriesListActivity" android:label="分类管理" />
-        <activity android:name="CategoryEditorActivity" android:label="编辑分类" />
+        <activity android:name="CategoriesListActivity" android:label="分类管理" android:exported="false" />
+        <activity android:name="CategoryEditorActivity" android:label="编辑分类" android:exported="false" />
 
     </application>
 

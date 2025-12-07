@@ -16,9 +16,9 @@
 
 package com.example.android.notepad;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity; // 更改为AppCompatActivity
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
@@ -28,7 +28,7 @@ import android.widget.Toast;
 /**
  * 分类编辑界面，用于创建或编辑分类
  */
-public class CategoryEditorActivity extends Activity {
+public class CategoryEditorActivity extends AppCompatActivity { // 更改为AppCompatActivity
     public static final String EXTRA_CATEGORY_ID = "category_id";
     
     private static final String TAG = "CategoryEditorActivity";
@@ -82,6 +82,7 @@ public class CategoryEditorActivity extends Activity {
             // 插入模式
             mState = STATE_INSERT;
             mCategory = new Category();
+            mCategory.setName(""); // 初始化为空字符串，避免空指针
             setTitle("新建分类");
         }
     }
@@ -163,13 +164,13 @@ public class CategoryEditorActivity extends Activity {
      */
     private boolean isCategoryNameExists(String name) {
         // 如果是编辑模式且名称没有改变，则不认为重复
-        if (mState == STATE_EDIT && mCategory.getName().equals(name)) {
+        if (mState == STATE_EDIT && mCategory != null && mCategory.getName() != null && mCategory.getName().equals(name)) {
             return false;
         }
         
         // 检查是否有其他同名分类
         for (Category category : mCategoryDataSource.getAllCategories()) {
-            if (category.getName().equals(name)) {
+            if (category.getName() != null && category.getName().equals(name)) {
                 return true;
             }
         }

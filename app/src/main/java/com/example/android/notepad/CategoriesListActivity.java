@@ -151,6 +151,7 @@ public class CategoriesListActivity extends AppCompatActivity {
         if (itemId == R.id.menu_add_category) {
             // 启动分类编辑界面，创建新分类
             Intent intent = new Intent(this, CategoryEditorActivity.class);
+            // 不设置ACTION_EDIT动作，让CategoryEditorActivity进入插入模式
             startActivityForResult(intent, 1); // 使用startActivityForResult以便在返回时刷新列表
             return true;
         }
@@ -195,13 +196,7 @@ public class CategoriesListActivity extends AppCompatActivity {
         
         int itemId = item.getItemId();
         
-        if (itemId == R.id.menu_edit_category) {
-            // 编辑分类
-            Intent intent = new Intent(this, CategoryEditorActivity.class);
-            intent.putExtra(CategoryEditorActivity.EXTRA_CATEGORY_ID, categoryId);
-            startActivityForResult(intent, 2); // 使用startActivityForResult以便在返回时刷新列表
-            return true;
-        } else if (itemId == R.id.menu_delete_category) {
+        if (itemId == R.id.menu_delete_category) {
             // 删除分类
             deleteCategory(categoryId, categoryName);
             return true;
